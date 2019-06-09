@@ -505,7 +505,7 @@ namespace getfem {
     
     void darcy3d1d::assembly (void)
     {
-	std::cout<<"assemble transport problem"<<std::endl;
+	std::cout<<"assemble darcy problem"<<std::endl;
 	//1 Build the monolithic matrix AM_darcy
 	assembly_mat(); 
 	//2 Build the monolithic rhs FM_darcy
@@ -538,13 +538,14 @@ namespace getfem {
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt())));
                         
-        // AssemblinG the 1d darcy (k_v ds, ds)
+        // Assembling the 1d darcy (k_v ds, ds)
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 1d darcy (k_v ds, ds) " << endl;
         #endif
+        // TODO generalize to variable radius
         sparse_matrix_type Dv(dof_darcy.Pv(), dof_darcy.Pv()); gmm::clear(Dv);	
         getfem::asm_stiffness_matrix_for_laplacian(Dv,mimv,mf_Pv, mf_coefv, param_darcy.Kv());	
-        gmm::add(Dv, gmm::sub_matrix(AM_darcy,
+        gmm::add(gmm::scaled(Dv, 2.0*pi*param_darcy.R(0)), gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
         
@@ -599,5 +600,32 @@ namespace getfem {
         gmm::clear(Btt);  gmm::clear(Btv);
         gmm::clear(Bvt);  gmm::clear(Bvv);
     }
+
+    
+    bool darcy3d1d::solve (void)
+    {
+        std::cout<<"solve darcy problem"<<std::endl;
+        
+        double time = gmm::uclock_sec();
+
+        if ( descr_darcy.SOLVE_METHOD == "SuperLU" ) { 
+            // direct solver //
+            #ifdef M3D1D_VERBOSE_
+                cout << "  Applying the SuperLU method ... " << endl;
+            #endif	
+            scalar_type cond;
+            gmm::SuperLU_solve(AM_darcy, UM_darcy, FM_darcy, cond);
+            cout << "  Condition number (transport problem): " << cond << endl;
+        }
+            
+        //export solution
+        std::cout<<"solved! going to export..."<<std::endl;
+        //export_vtk("1"); 
+
+        cout << endl<<"... total time to solve : " << gmm::uclock_sec() - time << " seconds\n";
+
+        return true;
+	}; // end of solve
+
 
 } // end of namespace
