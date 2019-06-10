@@ -50,19 +50,17 @@ int main(int argc, char *argv[])
 	try {   
 		// Declare a new problem 
 		getfem::darcy3d1d p; 
-
 		// Initialize the problem
 		p.init(argc, argv);
-		
 		//assemble        
-		//p.assembly();    
+		p.assembly();    
 		//solve     
-		//if (!p.solve()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
+		if (!p.solve()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
         //#ifdef WITH_SAMG
 	 	 //if (!p.solve_samg()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
         //#endif
 				      
-		   
+        p.export_vtk();
 	}
 
 	GMM_STANDARD_CATCH_ERROR;

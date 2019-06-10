@@ -165,7 +165,7 @@ namespace getfem {
         #ifdef M3D1D_VERBOSE_
             cout << "Building parameters for tissue and vessel problems ..." << endl;
         #endif
-        param_darcy.build(PARAM, mf_coefv);
+        param_darcy.build(PARAM, mf_coeft, mf_coefv);
         #ifdef M3D1D_VERBOSE_
         //cout << param_darcy ;
         #endif
@@ -180,8 +180,8 @@ namespace getfem {
         BCt_darcy.clear();
         BCt_darcy.reserve(2*DIMT);
         // Parse BC data
-        string label_in = PARAM.string_value("BClabel_transp", "Array of tissue boundary labels");
-        string value_in = PARAM.string_value("BCvalue_transp", "Array of tissue boundary values");
+        string label_in = PARAM.string_value("BClabel", "Array of tissue boundary labels");
+        string value_in = PARAM.string_value("BCvalue", "Array of tissue boundary values");
         vector<string> labels = split(label_in, ' ');
         vector<string> values = split(value_in, ' ');
         cout << "DIMT==" << DIMT << endl;
@@ -505,17 +505,6 @@ namespace getfem {
     
     void darcy3d1d::assembly (void)
     {
-	std::cout<<"assemble darcy problem"<<std::endl;
-	//1 Build the monolithic matrix AM_darcy
-	assembly_mat(); 
-	//2 Build the monolithic rhs FM_darcy
-	//assembly_rhs();
-    } // end of assembly
-    
-        
-    void darcy3d1d::assembly_mat(void)
-    {
-
         #ifdef M3D1D_VERBOSE_
             cout << "Allocating AM_darcy, UM_darcy, FM_darcy ..." << endl;
         #endif
@@ -527,17 +516,34 @@ namespace getfem {
             cout << "Assembling the monolithic matrix AM_darcy ..." << endl;
         #endif
         
+        //1 Build the monolithic matrix AM_darcy
+        darcy3d1d::assembly3d_darcy();
+        darcy3d1d::assembly1d_darcy();
+        darcy3d1d::assembly3d1d_darcy();
+        darcy3d1d::assembly_bc();
+        //2 Build the monolithic rhs FM_darcy
+        //assembly_rhs();
+    } // end of assembly
+    
         
+    void darcy3d1d::assembly3d_darcy(void)
+    {            
         // Assembling the 3d darcy (k_p grad, grad)
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 3d darcy (k_p grad, grad) " << endl;
         #endif
-        sparse_matrix_type Dt(dof_darcy.Pt(), dof_darcy.Pt());gmm::clear(Dt);
-        getfem::asm_stiffness_matrix_for_laplacian(Dt,mimt,mf_Pt, mf_coeft, param_darcy.Kp());
+      
+        sparse_matrix_type Dt(dof_darcy.Pt(), dof_darcy.Pt()); gmm::clear(Dt);
+        getfem::asm_stiffness_matrix_for_laplacian(Dt, mimt, mf_Pt, mf_coeft, param_darcy.Kp());
         gmm::add(Dt, gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt())));
-                        
+
+        gmm::clear(Dt); 
+    }
+    
+    void darcy3d1d::assembly1d_darcy (void)
+    {
         // Assembling the 1d darcy (k_v ds, ds)
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 1d darcy (k_v ds, ds) " << endl;
@@ -548,7 +554,12 @@ namespace getfem {
         gmm::add(gmm::scaled(Dv, 2.0*pi*param_darcy.R(0)), gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
-        
+   
+        gmm::clear(Dv); 
+    }
+    
+    void darcy3d1d::assembly3d1d_darcy (void)
+    {
         // Assembling coupling terms
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling coupling terms " << endl;
@@ -591,20 +602,169 @@ namespace getfem {
         gmm::add(gmm::scaled(Bvv, 2.0*pi*param_darcy.R(0)),								
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()))); 
-
-
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
+        
         // De-allocate memory
-        gmm::clear(Dt); gmm::clear(Dv); 
         gmm::clear(Mbar);  gmm::clear(Mlin);
         gmm::clear(Btt);  gmm::clear(Btv);
         gmm::clear(Bvt);  gmm::clear(Bvv);
     }
+    
+    
+    void darcy3d1d::assembly_bc (void)
+    {   
+        //Assembling BC for the 3d problem
+        vector_type Ft_temp(dof_darcy.Pt()); gmm::clear(Ft_temp);
+        gmm::copy(gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())), Ft_temp);
+        gmm::clear(gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
+        sparse_matrix_type At_temp(dof_darcy.Pt(),dof_darcy.Pt()); gmm::clear(At_temp);
+        gmm::copy(gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(0, dof_darcy.Pt()),
+                                  gmm::sub_interval(0, dof_darcy.Pt())
+                                 ), At_temp);
+        gmm::clear(gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(0, dof_darcy.Pt()),
+                                  gmm::sub_interval(0, dof_darcy.Pt())
+                                 ));
+        
+        const double beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
+        
+        darcy3d1d::asm_tissue_bc
+        (Ft_temp, At_temp, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
+        
+        gmm::copy(Ft_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
+        gmm::copy(At_temp, gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(0, dof_darcy.Pt()),
+                                  gmm::sub_interval(0, dof_darcy.Pt())
+                                 ));
+        
+        gmm::clear(At_temp);
+        gmm::clear(Ft_temp);
+        
+        
+        //Assembling bc for the 1d problem
+        vector_type Fv_temp(dof_darcy.Pv()); gmm::clear(Fv_temp);
+        gmm::copy(gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())), Fv_temp);
+        gmm::clear(gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
+        sparse_matrix_type Av_temp(dof_darcy.Pv(),dof_darcy.Pv()); gmm::clear(Av_temp);
+        gmm::copy(gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
+                                 ), Av_temp);
+        gmm::clear(gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
+                                 ));
+        
+        const double beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the vessels");
+        
+        darcy3d1d::asm_network_bc
+        (Fv_temp, Av_temp, mimv, mf_Pv, mf_coefv, BCv_darcy, beta_vessel, param_darcy.R());      
+           
+        gmm::copy(Fv_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
+        gmm::copy(Av_temp, gmm::sub_matrix(AM_darcy, 
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
+                                  gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
+                                 ));
+        
+        gmm::clear(Av_temp);
+        gmm::clear(Fv_temp);   
+        
+    }
+    
+    template<typename MAT, typename VEC>
+    void darcy3d1d::asm_tissue_bc
+        (VEC & F,
+        MAT & M,
+        const mesh_im & mim,
+        const mesh_fem & mf_p,
+        const mesh_fem & mf_data,
+        const std::vector<getfem::node> & BC,
+        const scalar_type beta
+        )
+    {
 
+        GMM_ASSERT1(mf_p.get_qdim()==1,  "invalid data mesh fem (Qdim=1 required)");
+        GMM_ASSERT1(mf_data.get_qdim()==1, "invalid data mesh fem (Qdim=1 required)");
+
+        for (size_type bc=0; bc < BC.size(); ++bc) {
+            GMM_ASSERT1(mf_p.linked_mesh().has_region(bc), "missed mesh region" << bc);
+            if (BC[bc].label=="DIR") { 
+                // Dirichlet BC
+                VEC BC_temp(mf_p.nb_dof(), BC[bc].value);
+                getfem::assembling_Dirichlet_condition(M, F, mf_p, BC[bc].rg, BC_temp);
+                gmm::clear(BC_temp);				
+            } 
+            else if (BC[bc].label=="MIX") { 
+                // Robin BC
+                VEC BETA(mf_data.nb_dof(), beta);
+                getfem::asm_mass_matrix_param(M, mim, mf_p, mf_data, BETA,mf_p.linked_mesh().region(BC[bc].rg) );
+                
+                VEC BETA_C0(mf_data.nb_dof(), beta*BC[bc].value);
+                asm_source_term(F,mim, mf_p, mf_data,BETA_C0);
+            }
+            else if (BC[bc].label=="INT") { 
+                // Internal Node
+                GMM_WARNING1("internal node passed as boundary.");
+            }
+            else if (BC[bc].label=="JUN") { 
+                // Junction Node
+                GMM_WARNING1("junction node passed as boundary.");
+            }
+            else {
+                GMM_ASSERT1(0, "Unknown Boundary Condition " << BC[bc].label << endl);
+            }
+        }
+
+    } /* end of asm_tissue_bc */
+    
+    template<typename MAT, typename VEC>
+    void darcy3d1d::asm_network_bc
+        (VEC & F, MAT & M, 
+        const mesh_im & mim,
+        const mesh_fem & mf_p,
+        const mesh_fem & mf_data,
+        const std::vector<getfem::node> & BC,
+        const scalar_type beta,
+        const VEC & R) 
+    { 
+        GMM_ASSERT1(mf_p.get_qdim()==1,  "invalid data mesh fem (Qdim=1 required)");
+        GMM_ASSERT1(mf_data.get_qdim()==1, "invalid data mesh fem (Qdim=1 required)");
+        
+        for (size_type bc=0; bc < BC.size(); bc++) { 
+            GMM_ASSERT1(mf_p.linked_mesh().has_region(bc), "missed mesh region" << bc);
+            if (BC[bc].label=="DIR") { // Dirichlet BC
+                VEC BC_temp(mf_p.nb_dof(), BC[bc].value);
+                getfem::assembling_Dirichlet_condition(M, F, mf_p, BC[bc].rg, BC_temp);
+                gmm::clear(BC_temp);			
+            } 
+            else if (BC[bc].label=="MIX") { // Robin BC
+                VEC BETA(mf_data.nb_dof(), beta*pi);
+                for (size_type i = 0; i < mf_data.nb_dof(); i++ )
+                    BETA[i]= BETA[i]*R[i]*R[i];
+                getfem::asm_mass_matrix_param(M, mim, mf_p, mf_data, BETA,mf_p.linked_mesh().region(BC[bc].rg) ); //int(beta*cv*bv)
+                VEC BETA_C0(mf_data.nb_dof(), pi*beta*BC[bc].value);
+                for (size_type j = 0; j < mf_data.nb_dof(); j++ )
+                    BETA_C0[j]= BETA_C0[j]*R[j]*R[j];
+                asm_source_term(F,mim, mf_p, mf_data,BETA_C0); //int(beta*c0*bv)
+            }
+            else if (BC[bc].label=="INT") { // Internal Node
+                GMM_WARNING1("internal node passed as boundary.");
+            }
+            else if (BC[bc].label=="JUN") { // Junction Node
+                GMM_WARNING1("junction node passed as boundary.");
+            }
+            else {
+                GMM_ASSERT1(0, "Unknown Boundary Condition"<< BC[bc].label << endl);
+            }
+        }
+
+    }
+    
     
     bool darcy3d1d::solve (void)
     {
-        std::cout<<"solve darcy problem"<<std::endl;
+        std::cout << "solve darcy problem" << std::endl;
         
         double time = gmm::uclock_sec();
 
@@ -614,18 +774,59 @@ namespace getfem {
                 cout << "  Applying the SuperLU method ... " << endl;
             #endif	
             scalar_type cond;
+            //gmm::csc_matrix<scalar_type> A;
+            //gmm::copy(AM_darcy, A);
             gmm::SuperLU_solve(AM_darcy, UM_darcy, FM_darcy, cond);
             cout << "  Condition number (transport problem): " << cond << endl;
         }
-            
-        //export solution
-        std::cout<<"solved! going to export..."<<std::endl;
-        //export_vtk("1"); 
-
+        
         cout << endl<<"... total time to solve : " << gmm::uclock_sec() - time << " seconds\n";
+        
+        //export solution
+        std::cout << "solved! going to export..." << std::endl; 
 
         return true;
+        
 	}; // end of solve
 
+    
+    void darcy3d1d::export_vtk ()
+    {
+        #ifdef M3D1D_VERBOSE_
+            cout << "Exporting the solution (vtk format) to " << descr_darcy.OUTPUT << " ..." << endl;
+        #endif
+
+        // Array of unknown dof of the interstitial pressure
+        vector_type Pt(dof_darcy.Pt()); 
+        // Array of unknown dof of the vessel pressure
+        vector_type Pv(dof_darcy.Pv()); 
+
+        //Copy solution
+        gmm::copy(gmm::sub_vector(UM_darcy, 
+                    gmm::sub_interval(0, dof_darcy.Pt())), Pt);
+        gmm::copy(gmm::sub_vector(UM_darcy, 
+                    gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())), Pv);
+
+        #ifdef M3D1D_VERBOSE_
+            cout << "  Exporting Pt ..." << endl;
+        #endif
+        vtk_export exp_Pt(descr_darcy.OUTPUT+"Pt.vtk");
+        exp_Pt.exporting(mf_Pt);
+        exp_Pt.write_mesh();
+        exp_Pt.write_point_data(mf_Pt, Pt, "Pt");
+
+        #ifdef M3D1D_VERBOSE_
+            cout << "  Exporting Pv ..." << endl;
+        #endif
+        vtk_export exp_Pv(descr_darcy.OUTPUT+"Pv.vtk");
+        exp_Pv.exporting(mf_Pv);
+        exp_Pv.write_mesh();
+        exp_Pv.write_point_data(mf_Pv, Pv, "Pv");
+
+        #ifdef M3D1D_VERBOSE_
+            cout << "... export done, visualize the data file with (for example) Paraview " << endl; 
+        #endif
+            
+    }; // end of export
 
 } // end of namespace

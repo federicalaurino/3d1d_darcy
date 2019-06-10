@@ -48,7 +48,7 @@
 #include <descr3d1d_darcy.hpp>
 #include <param3d1d_darcy.hpp>
 #include <utilities_darcy.hpp>
-
+#include <cmath>
 //#include <assembling1d_transp.hpp>          
 //#include <assembling3d_transp.hpp>        
 #include <assembling3d1d_darcy.hpp>
@@ -78,19 +78,14 @@ public:
 	{} 
 	//! Initialize the problem
 	void init (int argc, char *argv[]);
-    
 	//! Assemble the problem
-	void assembly (void);
-    
-    /*
+	void assembly (void); 
 	//! Solve the problem
 	bool solve (void);
 	//bool solve_samg (void);
-	
 	//! Export the solution
-	void export_vtk (const string & time_suff = "",const string & suff = ""); 
-	*/
-    
+ 	void export_vtk (void); 
+	    
 	/*//! Compute mean concentration in the tissue
 	inline scalar_type mean_ct (void){ 
 		return asm_mean(mf_Ct, mimt, 
@@ -175,7 +170,32 @@ protected:
 	//! Build the list of vessel boundary (and junctions) data 
 	void build_vessel_boundary(void);
     //! Build the monolithic matrix AM_transp by blocks
-	void assembly_mat(void);
+	
+    void assembly3d_darcy (void);
+    void assembly1d_darcy (void);
+    void assembly3d1d_darcy (void);
+    void assembly_bc (void);
+    
+    template<typename MAT, typename VEC>
+    void asm_tissue_bc
+        (VEC & F,
+        MAT & M,
+        const mesh_im & mim,
+        const mesh_fem & mf_p,
+        const mesh_fem & mf_data,
+        const std::vector<getfem::node> & BC,
+        const scalar_type beta
+        );
+    
+    template<typename MAT, typename VEC>
+    void asm_network_bc
+        (VEC & F, MAT & M, 
+        const mesh_im & mim,
+        const mesh_fem & mf_c,
+        const mesh_fem & mf_data,
+        const std::vector<getfem::node> & BC,
+        const scalar_type beta,
+        const VEC & R);
 	//! Build the monolithic rhs FM_transp by blocks
 	//void assembly_rhs(void);
 	//void update(vector_type);
