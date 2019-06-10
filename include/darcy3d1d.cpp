@@ -81,9 +81,6 @@ namespace getfem {
 	//! Import mesh for tissue (3D) and vessel (1D)  
 	void darcy3d1d::build_mesh (void)
     {
-        
-		//TODO Stefano:but, in order to have the boundary conditions for the nodes
-		//we need to build again the 1D mesh from another pts file
 		mesht.clear();
         //TODO import 3d mesh 
         /*
@@ -137,6 +134,7 @@ namespace getfem {
             cout << "Setting FEMs for tissue and vessel problems ..." << endl;
         #endif
         bgeot::pgeometric_trans pgt_t = bgeot::geometric_trans_descriptor(descr_darcy.MESH_TYPET);
+        DIMT = pgt_t->dim();
 		pfem pf_Pt = fem_descriptor(descr_darcy.FEM_TYPET_P);
 		pfem pf_Pv = fem_descriptor(descr_darcy.FEM_TYPEV_P);
 		mf_Pt.set_finite_element(mesht.convex_index(), pf_Pt);
@@ -145,7 +143,6 @@ namespace getfem {
 		pfem pf_coefv = fem_descriptor(descr_darcy.FEM_TYPEV_DATA);
 		mf_coeft.set_finite_element(mesht.convex_index(), pf_coeft);
 		mf_coefv.set_finite_element(meshv.convex_index(), pf_coefv);
-        DIMT = pgt_t->dim();
 
         #ifdef M3D1D_VERBOSE_
             cout << "Setting FEM dimensions for tissue and vessel problems ..." << endl;
@@ -184,8 +181,6 @@ namespace getfem {
         string value_in = PARAM.string_value("BCvalue", "Array of tissue boundary values");
         vector<string> labels = split(label_in, ' ');
         vector<string> values = split(value_in, ' ');
-        cout << "DIMT==" << DIMT << endl;
-        cout << "labels.size ==" << labels.size() << endl;
         GMM_ASSERT1(labels.size()==2*DIMT, "wrong number of BC labels");
         GMM_ASSERT1(values.size()==2*DIMT, "wrong number of BC values");
         for (unsigned f=0; f<2*DIMT; ++f) {
@@ -207,7 +202,6 @@ namespace getfem {
             assert(i.is_face());
 
             // Unit outward normal : used to identify faces
-            //! \todo Use getfem 5.0's function select_faces_of_normal?
             base_node un = mesht.normal_of_face_of_convex(i.cv(), i.f());
             un /= gmm::vect_norm2(un);
 
@@ -548,10 +542,12 @@ namespace getfem {
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 1d darcy (k_v ds, ds) " << endl;
         #endif
-        // TODO generalize to variable radius
+        vector_type coeff_Dv (dof_darcy.coefv());
+        for (size_type i=0; i< dof_darcy.coefv(); i++)
+            coeff_Dv[i] = param_darcy.Kv()[i]*2.0*pi*param_darcy.R()[i];
         sparse_matrix_type Dv(dof_darcy.Pv(), dof_darcy.Pv()); gmm::clear(Dv);	
-        getfem::asm_stiffness_matrix_for_laplacian(Dv,mimv,mf_Pv, mf_coefv, param_darcy.Kv());	
-        gmm::add(gmm::scaled(Dv, 2.0*pi*param_darcy.R(0)), gmm::sub_matrix(AM_darcy,
+        getfem::asm_stiffness_matrix_for_laplacian(Dv,mimv,mf_Pv, mf_coefv, coeff_Dv);	
+        gmm::add(Dv, gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
    
@@ -580,26 +576,28 @@ namespace getfem {
 
         asm_exchange_aux_mat(Mbar, Mlin, 
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
+        vector_type coeff_B(dof_darcy.coefv());
+        for (size_type i=0; i< dof_darcy.coefv(); i++)
+            coeff_B[i] = param_darcy.kappa()[i]*2.0*pi*param_darcy.R()[i];
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
-                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
+                mimv, mf_Pv, mf_coefv, coeff_B, Mbar);
         
-        //TODO generalize to variable radius
-        gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
+        gmm::add(Btt,			 
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt()))); 
         
-        gmm::add(gmm::scaled(Btv, -2.0*pi*param_darcy.R(0)),									
+        gmm::add(gmm::scaled(Btv, -1.0),									
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()))); 
 
-        gmm::add(gmm::scaled(Bvt, -2.0*pi*param_darcy.R(0)),  	
+        gmm::add(gmm::scaled(Bvt, -1.0),  	
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(0, dof_darcy.Pt())));
 
-        gmm::add(gmm::scaled(Bvv, 2.0*pi*param_darcy.R(0)),								
+        gmm::add(Bvv,								
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
