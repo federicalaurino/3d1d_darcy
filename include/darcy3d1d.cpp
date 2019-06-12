@@ -606,6 +606,9 @@ namespace getfem {
         gmm::clear(Mbar);  gmm::clear(Mlin);
         gmm::clear(Btt);  gmm::clear(Btv);
         gmm::clear(Bvt);  gmm::clear(Bvv);
+
+        
+        
     }
     
     
@@ -757,6 +760,44 @@ namespace getfem {
             }
         }
 
+    }
+    
+    bool darcy3d1d::solve_samg(void)
+    {   
+        
+        cout << "Solving with samg.." << endl;
+        
+        scalar_type sz=5;
+        sparse_matrix_type X(sz,sz); gmm::clear(X);
+        std::ofstream outXcsr("X.txt");
+        outXcsr << "X = \n";
+        size_type cnt=1;
+        for(size_type i = 0; i < sz; i++){
+            outXcsr << " \n";
+            for(size_type j = 0; j < sz; j++){
+                X(i,j)=cnt;
+                cnt++;
+                X(2,2)=0;
+                X(3,1)=0;
+               outXcsr << X(i,j) << "  ";
+            }
+        }
+        
+        
+        outXcsr << " \n\n\n\n";
+        gmm::csr_matrix<scalar_type> X_csr;
+        gmm::copy(X, X_csr);
+        
+        outXcsr << "X_csr.pr = " << gmm::col_vector(X_csr.pr) << "\n";
+        outXcsr << "X_csr.ir = " << gmm::col_vector(X_csr.ir) << "\n";
+        outXcsr << "X_csr.jc = " << gmm::col_vector(X_csr.jc) << "\n";
+        outXcsr.close(); 
+        
+        
+        AMG sys("Sys_samg", X_csr);
+        sys.csr2samg();
+       
+        return true;
     }
     
     

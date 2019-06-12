@@ -60,6 +60,7 @@
 //#include <utilities_transp_nano.hpp>
 //#include <defines.hpp>>
 //#include <problem3d1d.hpp>
+#include <AMG_Interface.hpp>
 
 //TODO not tissue and vessel but reservoir and well
 
@@ -79,10 +80,10 @@ public:
 	//! Initialize the problem
 	void init (int argc, char *argv[]);
 	//! Assemble the problem
-	void assembly (void); 
+	void assembly (void);
 	//! Solve the problem
 	bool solve (void);
-	//bool solve_samg (void);
+	bool solve_samg (void);
 	//! Export the solution
  	void export_vtk (void); 
 	    
