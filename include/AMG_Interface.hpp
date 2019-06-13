@@ -37,20 +37,20 @@ std::vector<unsigned int> ia_samg_;    // row repartition on a_samg_ and ja_samg
 public:
   
 gmm::csr_matrix <scalar_type> A_csr_;
-std::vector <scalar_type> F_;
 std::vector <scalar_type> U_;
+std::vector <scalar_type> F_;
 
   // ======== costructor the class ========================
   AMG(std::string name);
   AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr, 
-      std::vector <scalar_type> F_, std::vector <scalar_type> U_);
+      std::vector <scalar_type> U_, std::vector <scalar_type> F_);
 // void set_dof(int , int, int, int);
     // ======== destructor the class ========================
   ~AMG();  // This is the destructor: declaration
   // ======== generation af matrix
   void csr2samg(void);
     // ======== solver of the class ========================
-//  void solve(gmm::csr_matrix<scalar_type> A_csr, std::vector<scalar_type> U, std::vector<scalar_type> B, int solver_type );
+  void solve(void);
   // =========== set to point to uknown vector ========================
 //  void set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts);
   
