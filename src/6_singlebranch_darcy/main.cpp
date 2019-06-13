@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		//assemble        
 		p.assembly();    
 		//solve     
-		if (!p.solve()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
+		if (!p.solve_samg()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
         //#ifdef WITH_SAMG
 	 	 //if (!p.solve_samg()) GMM_ASSERT1(false, "solve procedure has failed");  // the export is in the solve at each time step 
         //#endif
