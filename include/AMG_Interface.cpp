@@ -90,17 +90,25 @@ void AMG::solve(void)
     
     int nnu = ia_samg_.size() -1; // number of unknowns;
     int nna = a_samg_.size(); // number of nnz entries
-    std::vector <unsigned int> ia (ia_samg_.size());
-    gmm::copy(ia_samg_, ia);
-    std::vector <unsigned int> ja (ja_samg_.size());
-    gmm::copy(ja_samg_, ja);
-    std::vector <scalar_type> a (a_samg_.size());
-    gmm::copy(a_samg_, a);
-    std::vector <scalar_type> f (F_.size());
-    gmm::copy(F_, f);
-    std::vector <scalar_type u (F_.size()); gmm::clear(u);
     
-
+    int * ia, * ja;
+    int * iu     = new int[1];
+    int * ip     = new int[1];
+    int * iscale = new int[1];
+    double * a, *u, *f;
+    
+    ia = new int[ia_samg_.size()];
+    ja = new int[ja_samg_.size()];
+    a = new double[a_samg_.size()];
+    u = new double[F_.size()];
+    f = new double[F_.size()];
+    
+    
+    gmm::copy(ia_samg_, ia);
+    gmm::copy(ja_samg_, ja);
+    gmm::copy(a_samg_, a);
+    gmm::copy(F_, f);
+    
     int nsys = 1; 
     
     // int matrix = X Y where
@@ -152,15 +160,12 @@ void AMG::solve(void)
 
       
         
-      
-        
-        
-        samg(nnu,nna,nsys,
-            ia,ja,a,f,u,iu,ndiu,ip,ndip,matrix,iscale,
-            res_in,res_out,ncyc_done,ierr,
-            nsolve,ifirst,eps,ncyc,iswtch,
-            a_cmplx,g_cmplx,p_cmplx,w_avrge,
-            chktol,idump,iout);
+      SAMG(&nnu,&nna,&nsys,
+           &ia[0],&ja[0],&a[0],&f[0],&u[0],&iu[0],&ndiu,&ip[0],&ndip,&matrix,&iscale[0],
+           &res_in,&res_out,&ncyc_done,&ierr,
+           &nsolve,&ifirst,&eps,&ncyc,&iswtch,
+           &a_cmplx,&g_cmplx,&p_cmplx,&w_avrge,
+           &chktol,&idump,&iout);
         
 	return;
 }*/
