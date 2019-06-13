@@ -37,10 +37,13 @@ std::vector<unsigned int> ia_samg_;    // row repartition on a_samg_ and ja_samg
 public:
   
 gmm::csr_matrix <scalar_type> A_csr_;
+std::vector <scalar_type> F_;
+std::vector <scalar_type> U_;
 
   // ======== costructor the class ========================
   AMG(std::string name);
-  AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr);
+  AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr, 
+      std::vector <scalar_type> F_, std::vector <scalar_type> U_);
 // void set_dof(int , int, int, int);
     // ======== destructor the class ========================
   ~AMG();  // This is the destructor: declaration

@@ -765,7 +765,7 @@ namespace getfem {
     bool darcy3d1d::solve_samg(void)
     {   
         
-        cout << "Solving with samg.." << endl;
+        /*cout << "Solving with samg.." << endl;
         
         scalar_type sz=5;
         sparse_matrix_type X(sz,sz); gmm::clear(X);
@@ -793,9 +793,12 @@ namespace getfem {
         outXcsr << "X_csr.jc = " << gmm::col_vector(X_csr.jc) << "\n";
         outXcsr.close(); 
         
-        
-        AMG sys("Sys_samg", X_csr);
+        */
+        gmm::csr_matrix <scalar_type> AM_csr;
+        gmm::copy (AM_darcy, AM_csr);
+        AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
         sys.csr2samg();
+        sys.solve_samg();
        
         return true;
     }

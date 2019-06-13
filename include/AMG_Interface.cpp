@@ -8,10 +8,15 @@ AMG::AMG(std::string name)
 		
 }
 
-AMG::AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr)
+AMG::AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr, 
+      std::vector <scalar_type> F, std::vector <scalar_type> U);)
 {
     std::cout<<"Build class AMG for "<< name << std::endl;
     gmm::copy(A_csr, A_csr_);
+    gmm::resize(F_, F.size());
+    gmm::copy(F, F_);
+    gmm::resize(U_, U.size());
+    gmm::copy(U, U_);
 }
 
 AMG::~AMG(void) {
@@ -77,17 +82,28 @@ void AMG::csr2samg(void)
 }
 
 
-/*
-void AMG::solve(gmm::csr_matrix<scalar_type> A_csr, std::vector<scalar_type> U, std::vector<scalar_type> B, int solver_type)
+
+void AMG::solve(void)
 {
         
     // ===> Set primary parameters. Others can be set by access functions as shown below.
     
     int nnu = ia_samg_.size() -1; // number of unknowns;
     int nna = a_samg_.size(); // number of nnz entries
-    int nsys = 4; 
+    std::vector <unsigned int> ia (ia_samg_.size());
+    gmm::copy(ia_samg_, ia);
+    std::vector <unsigned int> ja (ja_samg_.size());
+    gmm::copy(ja_samg_, ja);
+    std::vector <scalar_type> a (a_samg_.size());
+    gmm::copy(a_samg_, a);
+    std::vector <scalar_type> f (F_.size());
+    gmm::copy(F_, f);
+    std::vector <scalar_type u (F_.size()); gmm::clear(u);
     
-    // matrix = X Y where
+
+    int nsys = 1; 
+    
+    // int matrix = X Y where
     //   X = 1 if A is symmetric, full matrix stored (normal case)
     //     = 2 A is not symmetric.   
     //     = 3 A is symmetric, lower triangular part stored (s. Remark below!)
@@ -136,7 +152,7 @@ void AMG::solve(gmm::csr_matrix<scalar_type> A_csr, std::vector<scalar_type> U, 
 
       
         
-        // ia, a, ja a, f ,u....
+      
         
         
         samg(nnu,nna,nsys,
