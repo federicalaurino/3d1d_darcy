@@ -542,11 +542,8 @@ namespace getfem {
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 1d darcy (k_v ds, ds) " << endl;
         #endif
-        vector_type coeff_Dv (dof_darcy.coefv());
-        for (size_type i=0; i< dof_darcy.coefv(); i++)
-            coeff_Dv[i] = param_darcy.Kv()[i]*2.0*pi*param_darcy.R()[i];
         sparse_matrix_type Dv(dof_darcy.Pv(), dof_darcy.Pv()); gmm::clear(Dv);	
-        getfem::asm_stiffness_matrix_for_laplacian(Dv,mimv,mf_Pv, mf_coefv, coeff_Dv);	
+        getfem::asm_stiffness_matrix_for_laplacian(Dv,mimv,mf_Pv, mf_coefv, param_darcy.Kv());	
         gmm::add(Dv, gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
@@ -576,37 +573,36 @@ namespace getfem {
 
         asm_exchange_aux_mat(Mbar, Mlin, 
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
-        vector_type coeff_B(dof_darcy.coefv());
-        for (size_type i=0; i< dof_darcy.coefv(); i++)
-            coeff_B[i] = param_darcy.kappa()[i]*2.0*pi*param_darcy.R()[i];
+        //TODO generalize to variable R
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
-                mimv, mf_Pv, mf_coefv, coeff_B, Mbar);
+                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
         
-        gmm::add(Btt,			 
+        gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt()))); 
         
-        gmm::add(gmm::scaled(Btv, -1.0),									
+        gmm::add(gmm::scaled(Btv, -2.0*pi*param_darcy.R(0)),									
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()))); 
 
-        gmm::add(gmm::scaled(Bvt, -1.0),  	
+        gmm::add(gmm::scaled(Bvt, -2.0/param_darcy.R(0)),  	
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(0, dof_darcy.Pt())));
 
-        gmm::add(Bvv,								
+        gmm::add(gmm::scaled(Bvv, 2.0/param_darcy.R(0)),								
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));        
         
         // De-allocate memory
         gmm::clear(Mbar);  gmm::clear(Mlin);
         gmm::clear(Btt);  gmm::clear(Btv);
         gmm::clear(Bvt);  gmm::clear(Bvv);
 
+        
         
         
     }
@@ -737,6 +733,10 @@ namespace getfem {
             if (BC[bc].label=="DIR") { // Dirichlet BC
                 VEC BC_temp(mf_p.nb_dof(), BC[bc].value);
                 getfem::assembling_Dirichlet_condition(M, F, mf_p, BC[bc].rg, BC_temp);
+                //NOTE Everything works without penalty if we don't scale the vessel eq by pi*R^2
+                double penalty =1.e+9;    
+                F[mf_p.basic_dof_on_region(BC[bc].rg).first()]= BC[bc].value*penalty;
+                M(mf_p.basic_dof_on_region(BC[bc].rg).first(),mf_p.basic_dof_on_region(BC[bc].rg).first())=penalty;
                 gmm::clear(BC_temp);			
             } 
             else if (BC[bc].label=="MIX") { // Robin BC
