@@ -2,8 +2,7 @@
 #include "AMG_Interface.hpp" 
 #include <iostream>
 #include <fstream>
-//#include <memory>
-#include "samg.h"   
+//#include "samg.h"   
 AMG::AMG(std::string name)
 {
 	std::cout<<"Build class AMG for "<< name << std::endl;
@@ -90,7 +89,7 @@ void AMG::csr2samg(void)
 }
 
 
-
+/**
 void AMG::solve(void)
 {
   
@@ -104,12 +103,12 @@ void AMG::solve(void)
       APPL_INT    ifirst    = 1;        // first approximation = zero
       double eps       = 1.0e-8;   // required (relative) residual reduction
       APPL_INT    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
-      /* If we want to use Samg as a stand-alone solver (not as a preconditioner), both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0
+      // If we want to use Samg as a stand-alone solver (not as a preconditioner), both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0
  				
-      APPL_INT ncgrad_default=0;
-      SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
-      ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
-      */
+      //APPL_INT ncgrad_default=0;
+      //SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
+      //ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
+      
    
       double a_cmplx   = 2.2;      // estimated dimensioning
       double g_cmplx   = 1.7;      // estimated dimensioning
@@ -196,21 +195,21 @@ void AMG::solve(void)
     if (nsys==1) 
         iu= new int[1];
     //TODO case nsys != 1 
-    /*else {
-        iu  = new APPL_INT[nnu];
-        ndiu   = nnu;
-        for(APPL_INT iiu=0;iiu<nnu;iiu++){
-            //TODO only working for nsys = 2 check it out for larger systems
-            if(iiu<dof_darcy.Pt())iu[iiu]=1;
-            else iu[iiu]=2;
-            }//end for iiu
-        }*/
+    //else {
+    //    iu  = new APPL_INT[nnu];
+    //    ndiu   = nnu;
+    //    for(APPL_INT iiu=0;iiu<nnu;iiu++){
+    //        //TODO only working for nsys = 2 check it out for larger systems
+    //        if(iiu<dof_darcy.Pt())iu[iiu]=1;
+    //        else iu[iiu]=2;
+    //        }//end for iiu
+    //    }
         
     ip = new int[1];
    
     ia = new int[nnu+1];
     ja = new int[nna];
-    a  = new double[nna];
+    a = new double[nna];
     if (!(ia && ja && a)) {
         std::cout << " allocation failed (ia,ja,a) " << std::endl;
         ierr=1;// return ierr;
@@ -271,7 +270,7 @@ void AMG::solve(void)
     s_var.close();
     */ 
     //***************************************
-
+/**
 // ===> if, e.g., the finest-level matrix shall be dumped:
 //
 //    char *string ="myfilename";
@@ -307,18 +306,18 @@ void AMG::solve(void)
     SAMG_SET_CLSOLVER_FINEST(&clsolver_finest);// change  nptmax
     ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
 
-/**    
-    //AMG stand alone
-    //Both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0 to use SAMG solver as a stand-alone solver (not as a preconditioner)
+    
+    ////AMG stand alone
+    ////Both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0 to use SAMG solver as a stand-alone solver (not as a preconditioner)
 
-    APPL_INT ncgrad_default=0;
-    SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
-    ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
+    //APPL_INT ncgrad_default=0;
+    //SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
+    //ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
 
         
-    // AMG accelerated
-    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations	
-**/
+    //// AMG accelerated
+    //ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations	
+
         
     //=====================================================
     // printing format
@@ -366,6 +365,7 @@ void AMG::solve(void)
     
     return;
 }
+*/
 //===============================================================
 //===============================================================
 //===============================================================
@@ -388,7 +388,8 @@ void AMG::set_pt2uk(APPL_INT * dofpt , APPL_INT q_dof, APPL_INT l_dof, APPL_INT 
 				std::std::cout<< "AMG::set_pt2uk end "  << std::std::endl;
 				std::std::cout << std::string(100, '=') << std::std::endl;
 }
-
+*/
+/*
 void AMG::set_dof(APPL_INT pt , APPL_INT ut, APPL_INT pv, APPL_INT uv){
 	_Pt=pt;_Ut=ut;_Pv=pv; _Uv=uv;
 }

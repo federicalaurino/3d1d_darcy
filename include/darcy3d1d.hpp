@@ -155,13 +155,18 @@ protected:
 	void build_tissue_boundary(void);
 	//! Build the list of vessel boundary (and junctions) data 
 	void build_vessel_boundary(void);
+    
     //! Build the monolithic matrix AM_transp by blocks
-	
+	//! Assembling the 3D Darcy block
     void assembly3d_darcy (void);
+    //! Assembling the 1D Darcy block
     void assembly1d_darcy (void);
+    //! Assembling the coupling terms
     void assembly3d1d_darcy (void);
+    //! Assembling the BC
     void assembly_bc (void);
     
+    //! Aux funtions for assembly_bc
     template<typename MAT, typename VEC>
     void asm_tissue_bc
         (VEC & F,
@@ -172,7 +177,6 @@ protected:
         const std::vector<getfem::node> & BC,
         const scalar_type beta
         );
-    
     template<typename MAT, typename VEC>
     void asm_network_bc
         (VEC & F, MAT & M, 
@@ -182,6 +186,7 @@ protected:
         const std::vector<getfem::node> & BC,
         const scalar_type beta,
         const VEC & R);
+        
 	//! Build the monolithic rhs FM_transp by blocks
 	//void assembly_rhs(void);
 	//void update(vector_type);
