@@ -101,6 +101,8 @@ struct descr3d1d_darcy {
 		cout << " FEM TYPE  1D pressure     : " << descr.FEM_TYPEV_P << endl;
 		cout << " FEM TYPE  3D data         : " << descr.FEM_TYPET_DATA << endl;
 		cout << " FEM TYPE  1D data         : " << descr.FEM_TYPEV_DATA << endl;
+        cout << " INTEEGRATION METHOD 3d    : " << descr.IM_TYPET << endl;
+        cout << " INTEEGRATION METHOD 1d    : " << descr.IM_TYPEV << endl;
         cout << "--------------------------------------------------" << endl;
 
 		return out;            

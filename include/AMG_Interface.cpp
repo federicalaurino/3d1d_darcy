@@ -1,7 +1,9 @@
 //#ifdef WITH_SAMG
 #include "AMG_Interface.hpp" 
+#include <iostream>
+#include <fstream>
 //#include <memory>
-
+#include "samg.h"   
 AMG::AMG(std::string name)
 {
 	std::cout<<"Build class AMG for "<< name << std::endl;
@@ -80,7 +82,7 @@ void AMG::csr2samg(void)
     }// end for on the rows
     
     //fortran indices start from 1...
-        ia_samg_[ia_samg_.size()-1] +=1;
+        for(int k=0; k<ia_samg_.size(); k++) ia_samg_[k] +=1; 
         for(int k=0; k<ja_samg_.size(); k++) ja_samg_[k] +=1;
 
 	return;
@@ -93,13 +95,13 @@ void AMG::solve(void)
     /*
     // ===> Set primary parameters. Others can be set by access functions as shown below.
 
-      int    ndiu      = 1;        // dimension of (dummy) vector iu
-      int    ndip      = 1;        // dimension of (dummy) vector ip
+      APPL_INT    ndiu      = 1;        // dimension of (dummy) vector iu
+      APPL_INT    ndip      = 1;        // dimension of (dummy) vector ip
 
-      int    nsolve    = 2;        // results in scalar approach (current system is scalar)
-      int    ifirst    = 1;        // first approximation = zero
+      APPL_INT    nsolve    = 2;        // results in scalar approach (current system is scalar)
+      APPL_INT    ifirst    = 1;        // first approximation = zero
       double eps       = 1.0e-8;   // required (relative) residual reduction
-      int    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
+      APPL_INT    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
 
       double a_cmplx   = 2.2;      // estimated dimensioning
       double g_cmplx   = 1.7;      // estimated dimensioning
@@ -107,15 +109,15 @@ void AMG::solve(void)
       double p_cmplx   = 0.0;      // estimated dimensioning (irrelevant for scalar case)
 
       double chktol    = -1.0;     // input checking de-activated (we know it's ok!)
-      int    idump     = 0;        // minimum output during setup
-      int    iout      = 2;        // display residuals per iteration and work statistics
+      APPL_INT    idump     = 0;        // minimum output during setup
+      APPL_INT    iout      = 2;        // display residuals per iteration and work statistics
 
-      int    n_default = 20;       // select default settings for secondary parameters
+      APPL_INT    n_default = 20;       // select default settings for secondary parameters
                                    // CURRENTLY AVAILABLE: 10-13, 15-18, 20-23, 25-28
                                    // NOTE: the higher the respective SECOND digit, the
                                    // more aggressive the coarsening (--> lower memory at
                                    // the expense of slower convergence)
-      int    iswtch    = 5100+n_default; // complete SAMG run ....
+      APPL_INT    iswtch    = 5100+n_default; // complete SAMG run ....
                                    // ... memory de-allocation upon return ....
                                    // ... memory extension feature activated ....
                                    // ... residuals measured in the L2-norm .....
@@ -124,7 +126,7 @@ void AMG::solve(void)
 // ===> Secondary parameters which have to be set if n_default=0
 //      (at the same time a demonstration of how to access secondary or hidden parameters)
 
-      int intin=0;
+      APPL_INT intin=0;
       double dblin=0;
 
       if (n_default == 0) {
@@ -147,23 +149,23 @@ void AMG::solve(void)
 
       // input:
 
-      int npnt,nsys,matrix,nnu,nna;
+      APPL_INT npnt,nsys,matrix,nnu,nna;
 
-      int * ia, * ja;
-      int * iu     = new int[1];
-      int * ip     = new int[1];
-      int * iscale = new int[1];
+      APPL_INT * ia, * ja;
+      APPL_INT * iu     = new int[1];
+      APPL_INT * ip     = new int[1];
+      APPL_INT * iscale = new int[1];
 
       double * a, * u, * f;
 
       // output:
-      int ierr,ierrl,ncyc_done;
+      APPL_INT ierr,ierrl,ncyc_done;
       double res_out,res_in;
 
       nnu = ia_samg_.size() -1; // number of unknowns;
       nna = a_samg_.size(); // number of nnz entries
       
-    // int matrix = X Y where
+    // APPL_INT matrix = X Y where
     //   X = 1 if A is symmetric, full matrix stored (normal case)
     //     = 2 A is not symmetric.   
     //     = 3 A is symmetric, lower triangular part stored (s. Remark below!)
@@ -176,10 +178,35 @@ void AMG::solve(void)
     
 **/
     
-    int npnt,nsys,matrix;
-				matrix=22; nsys=1;npnt=0;
-				int ndiu      = 1;        // dimension of (dummy) vector iu
-				int  ncyc;
+    APPL_INT npnt,nsys,matrix, nna, nnu;
+    
+    //output
+    APPL_INT ierr,ierrl,ncyc_done;
+      double res_out,res_in;
+      
+/**     //************************** test importing data from v2
+     std::ifstream frmfile("level1.frm", std::ios::in);    // open demo.frm
+
+      int iversion;
+      char ch;
+
+      frmfile >> ch >> iversion;
+      frmfile >> nna >> nnu >> matrix >> nsys >> npnt;
+
+      frmfile.close();
+
+      if (ch!='f' || iversion != 4) {
+          std::cout << "invalid file format for this test driver " << std::endl;
+          std::cout << "ch=" <<ch << std::endl;
+          std::cout << "inversion="inversion << std::endl;
+          ierr=1;// return ierr;
+      }
+**/
+      //****************************************
+		
+                matrix=22; nsys=1;npnt=0;
+				APPL_INT ndiu      = 1;        // dimension of (dummy) vector iu
+				APPL_INT  ncyc;
 
 				float told,tnew,tamg;
 
@@ -191,16 +218,22 @@ void AMG::solve(void)
 			/*else {
  			iu  = new APPL_INT[nnu];
  			ndiu   = nnu;
-			 for(int iiu=0;iiu<nnu;iiu++){
+			 for(APPL_INT iiu=0;iiu<nnu;iiu++){
 				//only working for nsys = 2 check it out for larger systems				 
 				if(iiu<dof_transp.Ct())iu[iiu]=1;
 				else iu[iiu]=2;
 				}//end for iiu
 			}*/
      
-
+      nnu = ia_samg_.size() -1; // number of unknowns;
+      nna = a_samg_.size(); // number of nnz entries
+      
       int i;
-
+      APPL_INT * ia, * ja;
+      double * f, * u, * a;
+      
+      
+                
       ia = new int[nnu+1];
       
       ja = new int[nna];
@@ -210,11 +243,36 @@ void AMG::solve(void)
           std::cout << " allocation failed (ia,ja,a) " << std::endl;
           ierr=1;// return ierr;
       }
+      
+      //***********************importing data
+/**       std::ifstream amgfile("level1.amg", std::ios::in);    // open demo.amg
+
+      for (i=0;i<nnu+1;i++) amgfile >> ia[i];
+      for (i=0;i<nna;i++)   amgfile >> ja[i]; 
+      for (i=0;i<nna;i++)   amgfile >> a[i]; 
+
+      amgfile.close();
+      
+      // right hand side
+
+      f = new double[nnu]; u = new double[nnu]; 
+      if (!(f && u)) {
+          std::cout << " allocation failed (f,u) " << std::endl;
+          ierr=1; //return ierr;
+      }
+      for (i=0;i<nnu;i++) u[i]=0.0;
+
+      std::ifstream rhsfile("level1.rhs", std::ios::in);    // open demo.rhs
+
+      for (i=0;i<nnu;i++) rhsfile >> f[i];
+
+      rhsfile.close();
+**/
+      //***********************************************
 
       for (i=0;i<nnu+1;i++) ia[i] = ia_samg_[i];
-      for (i=0;i<nna;i++)   ja[i] = ja_samg_[i]; 
       for (i=0;i<nna;i++)    a[i] = a_samg_[i]; 
-
+      for (i=0;i<nna;i++)   ja[i] = ja_samg_[i]; 
 
       f = new double[nnu]; u = new double[nnu]; 
       if (!(f && u)) {
@@ -270,7 +328,7 @@ void AMG::solve(void)
 // ===> if, e.g., the finest-level matrix shall be dumped:
 //
 //    char *string ="myfilename";
-//    int length=10;
+//    APPL_INT length=10;
 //    SAMG_SET_FILNAM_DUMP(&string[0],&length,&length);
 //    idump=8;
 
@@ -282,7 +340,7 @@ void AMG::solve(void)
       
 
       // direct solver
-			int levelx;
+			APPL_INT levelx;
 			SAMG_GET_LEVELX(&levelx); // retreive levelx=number of maximum coarsening levels 
 			 std::cout<<"..value of levelx======"<<levelx<<std::endl;
 			levelx=1;
@@ -290,7 +348,7 @@ void AMG::solve(void)
 			SAMG_GET_LEVELX(&levelx);// retreive levelx=number of maximum coarsening levels 
 			std::cout<<"..check if change value of levelx======"<<levelx<<std::endl;
 			
-			int  nrc=11;int  nrc_emergency=11;int nptmax=5000;int clsolver_finest=1;
+			APPL_INT  nrc=11;APPL_INT  nrc_emergency=11;APPL_INT nptmax=5000;APPL_INT clsolver_finest=1;
 			  SAMG_SET_NRC(&nrc);// change  nrc=solver for coarser levels page 67 user guide
 			SAMG_SET_NRC_EMERGENCY(&nrc_emergency);
 			  SAMG_SET_NPTMAX(&nptmax);// change  nptmax
@@ -304,7 +362,7 @@ void AMG::solve(void)
         //AMG stand alone
 			//Both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0 to use SAMG solver as a stand-alone solver (not as a preconditioner)
  				
-			int ncgrad_default=0;
+			APPL_INT ncgrad_default=0;
 			SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
 			ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
 
@@ -313,23 +371,29 @@ void AMG::solve(void)
 			ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations	
         **/
         
-                int ndip      = 1;        // dimension of (dummy) vector ip
+        
+                //=====================================================
+                /// printing format
+                char ch[] = "f";int len=1;
+                SAMG_SET_IOFORM(&ch[0],&len);
+            
+                APPL_INT ndip      = 1;        // dimension of (dummy) vector ip
 				// int* iscale = new APPL_INT[1];
 				// this vector (iscale) indicates which uknowns require scaling if 0 no scaling
-				int* iscale = new int[nsys]; for(int i_sys=0; i_sys<nsys; i_sys++) iscale[i_sys]=0; 
+				int* iscale = new int[nsys]; for(APPL_INT i_sys=0; i_sys<nsys; i_sys++) iscale[i_sys]=0; 
 				int* ip     = new int[1];
-				int nsolve    = 2;        // results in scalar approach (current system is scalar)
-				int ifirst    = 1;        // first approximation = zero
+				APPL_INT nsolve    = 2;        // results in scalar approach (current system is scalar)
+				APPL_INT ifirst    = 1;        // first approximation = zero
 				double  eps       = 1.0e-6;   // required (relative) residual reduction
 				
 				//ncyc      = 50050;
-				int n_default = 20;       // select default settings for secondary parameters
+				APPL_INT n_default = 20;       // select default settings for secondary parameters
 
 				// CURRENTLY AVAILABLE: 10-13, 15-18, 20-23, 25-28
 				// NOTE: the higher the respective SECOND digit, the
 				// more aggressive the coarsening (--> lower memory at
 				// the expense of slower convergence)
-				int iswtch    = 5100+n_default; // complete SAMG run ....
+				APPL_INT iswtch    = 5100+n_default; // complete SAMG run ....
 				// ... memory de-allocation upon return ....
 				// ... memory extension feature activated ....
 				// ... residuals measured in the L2-norm .....
@@ -346,25 +410,19 @@ void AMG::solve(void)
 				
 				//============================================
 				//     idump controls the matrix dumping of SAMG				
-				// 1  Standard print output, no matrix dump. 
+				// 1  Standard prAPPL_INT output, no matrix dump. 
 				// 2‐6  Write matrices to disk: level 2 up to level idmp. 
 				// 7  Write matrices to disk: level 2 up to the coarsest level. 
 				// 8  Write finest‐level matrix to disk (incl. right hand side etc.). 
 				// 9  Write all matrices to disk. 
-				int idump     = -1;       // minimum output during setup
+				APPL_INT idump     = 9;       // minimum output during setup
 				//============================================
 				// iout page 44 Userguide. it controls display outpu. default 2 very verbose 43
-				int iout      = 43;        // display residuals per iteration and work statistics
+				APPL_INT iout      = 43;        // display residuals per iteration and work statistics
 
 
 
-				// output:
-				int ierr,ierrl,ncyc_done;
-				double res_out,res_in;
-				//end
-
- 
-      
+     
       SAMG(&nnu,&nna,&nsys,
            &ia[0],&ja[0],&a[0],&f[0],&u[0],&iu[0],&ndiu,&ip[0],&ndip,&matrix,&iscale[0],
            &res_in,&res_out,&ncyc_done,&ierr,
@@ -373,23 +431,28 @@ void AMG::solve(void)
            &chktol,&idump,&iout);
 
       if (ierr > 0) {
-          cout << endl << " SAMG terminated with error code " 
-               << ierr << " **** " << endl;
+          std::cout << std::endl << " SAMG terminated with error code " 
+               << ierr << " **** " << std::endl;
       }
       else if (ierr < 0) {
-          cout << endl << " SAMG terminated with warning code " 
-               << ierr << " **** " << endl;
+          std::cout << std::endl << " SAMG terminated with warning code " 
+               << ierr << " **** " << std::endl;
       }
 
       
       SAMG_LEAVE(&ierrl);
       
       if (ierrl != 0) {
-          cout << endl << " error at samg_leave" 
-               << ierr << " **** " << endl;
+          std::cout << std::endl << " error at samg_leave" 
+               << ierr << " **** " << std::endl;
       }
       
-      delete[] ia,ja,a,f,u,iu,ip,iscale;
+      //delete[] ia,ja,a,f,u,iu,ip,iscale;
+      
+      //save the solution
+      gmm::resize(sol, nnu);
+      for (int i=0; i<nnu ; i++)
+          sol[i]=u[i];
         
       return;
 }
@@ -399,7 +462,7 @@ void AMG::solve(void)
 //===============================================================
 
 /*
-void AMG::set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts){
+void AMG::set_pt2uk(APPL_INT * dofpt , APPL_INT q_dof, APPL_INT l_dof, APPL_INT npts){
 	
 		std::std::cout << std::string(100, '=') << std::std::endl;
 		std::std::cout<< "AMG::set_pt2uk start"  << std::std::endl;
@@ -408,7 +471,7 @@ void AMG::set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts){
 		
 		_q_dof=q_dof; _l_dof=l_dof; _npts=npts;
 		_pt2uk.resize(_q_dof + l_dof);
-		for (int idof=0; idof< q_dof+l_dof; idof++)  _pt2uk[idof] = dofpt[idof] ;
+		for (APPL_INT idof=0; idof< q_dof+l_dof; idof++)  _pt2uk[idof] = dofpt[idof] ;
 			
 				
 				std::std::cout << std::string(100, '=') << std::std::endl;
@@ -416,7 +479,7 @@ void AMG::set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts){
 				std::std::cout << std::string(100, '=') << std::std::endl;
 }
 
-void AMG::set_dof(int pt , int ut, int pv, int uv){
+void AMG::set_dof(APPL_INT pt , APPL_INT ut, APPL_INT pv, APPL_INT uv){
 	_Pt=pt;_Ut=ut;_Pv=pv; _Uv=uv;
 }
 

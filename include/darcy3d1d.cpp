@@ -16,8 +16,7 @@
   */
 
 #include <darcy3d1d.hpp>
-#include <cmath>
-//#include <assembling1d_transp_nano.hpp>
+
 
 //#ifdef USE_SAMG
 
@@ -532,6 +531,8 @@ namespace getfem {
         gmm::add(Dt, gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt())));
+    
+        gmm::MatrixMarket_IO::write("Dt.mm",Dt);
 
         gmm::clear(Dt); 
     }
@@ -547,7 +548,9 @@ namespace getfem {
         gmm::add(Dv, gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
-   
+        
+        gmm::MatrixMarket_IO::write("Dv.mm",Dv);
+        
         gmm::clear(Dv); 
     }
     
@@ -570,9 +573,10 @@ namespace getfem {
         sparse_matrix_type Mbar(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mbar);
         // Aux tissue-to-vessel interpolation matrix
         sparse_matrix_type Mlin(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mlin);
-
+        
         asm_exchange_aux_mat(Mbar, Mlin, 
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
+    
         //TODO generalize to variable R
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
                 mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
@@ -597,13 +601,18 @@ namespace getfem {
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));        
         
+        //***************************************
+        //checkig matrices
+        gmm::MatrixMarket_IO::write("Mbar.mm",Mbar);
+        gmm::MatrixMarket_IO::write("Bvv.mm",gmm::scaled(Bvv, 2.0/param_darcy.R(0)));
+        gmm::MatrixMarket_IO::write("Btt.mm",gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)));
+        gmm::MatrixMarket_IO::write("Btv.mm",gmm::scaled(Btv, -2.0*pi*param_darcy.R(0)));
+        gmm::MatrixMarket_IO::write("Bvt.mm",gmm::scaled(Bvt, 2.0/param_darcy.R(0)));
+        
         // De-allocate memory
         gmm::clear(Mbar);  gmm::clear(Mlin);
         gmm::clear(Btt);  gmm::clear(Btv);
         gmm::clear(Bvt);  gmm::clear(Bvv);
-
-        
-        
         
     }
     
@@ -624,13 +633,13 @@ namespace getfem {
                                   gmm::sub_interval(0, dof_darcy.Pt())
                                  ));
         
-        const double beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
+        scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
         
         darcy3d1d::asm_tissue_bc
         (Ft_temp, At_temp, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
         
-        gmm::copy(Ft_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
-        gmm::copy(At_temp, gmm::sub_matrix(AM_darcy, 
+        gmm::add(Ft_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
+        gmm::add(At_temp, gmm::sub_matrix(AM_darcy, 
                                   gmm::sub_interval(0, dof_darcy.Pt()),
                                   gmm::sub_interval(0, dof_darcy.Pt())
                                  ));
@@ -641,10 +650,10 @@ namespace getfem {
         
         //Assembling bc for the 1d problem
         vector_type Fv_temp(dof_darcy.Pv()); gmm::clear(Fv_temp);
-        gmm::copy(gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())), Fv_temp);
+        gmm::add(gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())), Fv_temp);
         gmm::clear(gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
         sparse_matrix_type Av_temp(dof_darcy.Pv(),dof_darcy.Pv()); gmm::clear(Av_temp);
-        gmm::copy(gmm::sub_matrix(AM_darcy, 
+        gmm::add(gmm::sub_matrix(AM_darcy, 
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
                                  ), Av_temp);
@@ -653,13 +662,12 @@ namespace getfem {
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
                                  ));
         
-        const double beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the vessels");
+        scalar_type beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the vessels");
         
         darcy3d1d::asm_network_bc
         (Fv_temp, Av_temp, mimv, mf_Pv, mf_coefv, BCv_darcy, beta_vessel, param_darcy.R());      
-           
-        gmm::copy(Fv_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
-        gmm::copy(Av_temp, gmm::sub_matrix(AM_darcy, 
+        gmm::add(Fv_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
+        gmm::add(Av_temp, gmm::sub_matrix(AM_darcy, 
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
                                  ));
@@ -803,7 +811,10 @@ namespace getfem {
         AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
         sys.csr2samg();
         sys.solve();
-       
+        //solution
+        for(int i=0; i< dof_darcy.tot(); i++)
+            UM_darcy[i] = sys.getsol()[i];
+        
         return true;
     }
     

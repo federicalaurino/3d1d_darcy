@@ -15,16 +15,16 @@
 
 // GetFem++ libraries
 #include <getfem/getfem_assembling.h> 
-#include <getfem/getfem_import.h>
+//#include <getfem/getfem_import.h>
 #include <getfem/getfem_export.h>   
 #include <getfem/getfem_regular_meshes.h>
-#include <getfem/getfem_mesh.h>
-#include <getfem/getfem_derivatives.h>
-#include <getfem/getfem_superlu.h>
-#include <getfem/getfem_partial_mesh_fem.h>
+//#include <getfem/getfem_mesh.h>
+//#include <getfem/getfem_derivatives.h>
+//#include <getfem/getfem_superlu.h>
+//#include <getfem/getfem_partial_mesh_fem.h>
 #include <getfem/getfem_interpolated_fem.h>
 #include <gmm/gmm.h>
-#include <gmm/gmm_matrix.h>
+//#include <gmm/gmm_matrix.h>
 #include <gmm/gmm_inoutput.h>
 #include <gmm/gmm_iter_solvers.h>
 // Standard libraries
@@ -35,32 +35,17 @@
 #include <iterator>
 #include <string>
 // Project headers
-#include <defines.hpp>
-//#include <mesh3d.hpp>       
+#include <defines.hpp>      
 #include <mesh1d_darcy.hpp>
-//#include <utilities.hpp>
-
-//#include <assembling1d.hpp>          
-//#include <assembling3d.hpp>        
-//#include <assembling3d1d.hpp>
+#include <utilities_darcy.hpp>
+#include <assembling3d1d_darcy.hpp>
 #include <node.hpp>
 #include <dof3d1d_darcy.hpp>
 #include <descr3d1d_darcy.hpp>
 #include <param3d1d_darcy.hpp>
-#include <utilities_darcy.hpp>
-#include <cmath>
-//#include <assembling1d_transp.hpp>          
-//#include <assembling3d_transp.hpp>        
-#include <assembling3d1d_darcy.hpp>
-//#include <dof3d1d_transp.hpp>
-//#include <descr3d1d_transp.hpp>
-//#include <param3d1d_transp.hpp>
-
-//#include <assembling1d_transp_nano.hpp> 
-//#include <utilities_transp_nano.hpp>
-//#include <defines.hpp>>
-//#include <problem3d1d.hpp>
 #include <AMG_Interface.hpp>
+
+#include <cmath>
 
 //TODO not tissue and vessel but reservoir and well
 

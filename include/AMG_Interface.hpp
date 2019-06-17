@@ -6,11 +6,11 @@
 
 #include "gmm/gmm.h"
 #include "getfem/getfem_mesh.h"
-//#include "samg.h"
+
 /* default 4 Byte integer types */
-//#ifndef APPL_INT
-//#define APPL_INT int
-//#endif
+#ifndef APPL_INT
+#define APPL_INT int
+#endif
 
 using bgeot::scalar_type;
 using bgeot::size_type;
@@ -29,10 +29,11 @@ bool first_=true;*/
 
 
 private:
+    
 std::vector<scalar_type> a_samg_;   // stores the entries of the matrix in SAMG format
 std::vector<unsigned int> ja_samg_;    // stores the column indices of the entries of a_samg_  
 std::vector<unsigned int> ia_samg_;    // row repartition on a_samg_ and ja_samg_
-//APPL_INT nnu_,nna_;
+std::vector<scalar_type> sol; //samg solution               
 
 public:
   
@@ -55,7 +56,7 @@ std::vector <scalar_type> F_;
 //  void set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts);
   
     // =========== return the solution ========================
-//  std::vector<scalar_type> getsol(){return sol_vec;}
+  std::vector<scalar_type> getsol(){return sol;}
 };
 
 //#endif

@@ -1,7 +1,7 @@
 include ../config.mk
 
 CPPFLAGS=-I. -I$(GETFEM_PREFIX)/include
-CXXFLAGS+=-std=c++14
+CXXFLAGS+=-std=c++11
 OPTFLAGS=-O3 -DNDEBUG -march=native
 
 LIBDIR=../lib

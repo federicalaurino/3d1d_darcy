@@ -68,8 +68,7 @@ namespace getfem {
  */
 //! \note It also build vessel mesh regions (#=0 for branch 0, #=1 for branch 1, ...).
 template<typename VEC>
-void 
-import_pts_file(
+void import_pts_file(
 		std::istream & ist, 
 		getfem::mesh & mh1D, 
 		std::vector<getfem::node> &  BCList,

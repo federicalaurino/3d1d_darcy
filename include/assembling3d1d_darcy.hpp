@@ -1,23 +1,22 @@
- /* -*- c++ -*- (enableMbars emacs c++ mode) */
+/* -*- c++ -*- (enables emacs c++ mode) */
 /*======================================================================
     "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
         Course on Advanced Programming for Scientific Computing
                       Politecnico di Milano
-                          A.Y. 2016-2017
+                          A.Y. 2014-2015
                   
-                Copyright (C) 2016 Stefano Brambilla
+                Copyright (C) 2015 Domenico Notaro
 ======================================================================*/
 /*! 
-  @file   assembling1d.hpp
-  @author Stefano Brambilla <s.brambilla93@gmail.com>
-  @date   September 2016.
-  @brief  Miscelleanous assembly routines for the 3D/1D coupling problem.
+  @file   assembling3d1d.hpp
+  @author Domenico Notaro <domenico.not@gmail.com>
+  @date   January 2016.
+  @brief  Miscelleanous assembly routines for the 3D/1D coupling.
  */
-#ifndef M3D1D_ASSEMBLING_3D1D_TRANSP_HPP_
-#define M3D1D_ASSEMBLING_3D1D_TRANSP_HPP_
+#ifndef M3D1D_ASSEMBLING_3D1D_HPP_
+#define M3D1D_ASSEMBLING_3D1D_HPP_
 #include <defines.hpp>
-#include <utilities_darcy.hpp>
-
+//#include <utilities_darcy.hpp>
 
 namespace getfem {
 
@@ -85,6 +84,8 @@ asm_exchange_aux_mat
 		// Get the local interpolation matrix Mbari
 		MAT Mbari(NInt, nb_dof_t); gmm::clear(Mbari);
 		interpolation(mf_t, mti, Pt, Pbari, Mbari, 1);
+        if(i==3)
+        gmm::MatrixMarket_IO::write( "Mbari.mm" ,Mbari); 
 		scalar_type sum_row = 0.0;
 		for (size_type j=0; j < NInt; ++j) {
 			typename gmm::linalg_traits<MAT>::const_sub_row_type 
@@ -98,6 +99,7 @@ asm_exchange_aux_mat
 				sum_row += (*it_nz);
 			}
 		}
+		gmm::cout<<"=====dof_v"<<i<<"========sum_row"<<sum_row <<gmm::endl;
 		typename gmm::linalg_traits<MAT>::sub_row_type 
 			row = mat_row(Mbar,i);
 		gmm::linalg_traits< gmm::rsvector<scalar_type> >::iterator
@@ -130,9 +132,8 @@ asm_exchange_mat
 	(MAT & Btt, MAT & Btv, MAT & Bvt, MAT & Bvv, 
 	 const getfem::mesh_im & mim,
 	 const getfem::mesh_fem & mf_v, 
-     const getfem::mesh_fem & mf_coefv,
-     const VEC & Q,
-	 const MAT & Mbar
+	 const getfem::mesh_fem & mf_coefv,
+	 const VEC & Q,const MAT & Mbar
 	 ) 
 {
 	#ifdef M3D1D_VERBOSE_
@@ -143,6 +144,7 @@ asm_exchange_mat
 	cout << "    Assembling Bvt ..." << endl;
 	#endif
 	gmm::mult(Bvv, Mbar, Bvt);
+
 		#ifdef M3D1D_VERBOSE_
 		cout << "    Assembling Btv (alternative form) ..." << endl;
 		#endif
@@ -151,21 +153,11 @@ asm_exchange_mat
 		cout << "    Assembling Btt (alternative form) ..." << endl;
 		#endif
 		gmm::mult(gmm::transposed(Mbar), Bvt, Btt); 
-
+	
+	
 } /* end of build_exchange_matrices */
 
 
-/*
-Build the vector of coefficient which multiplies the exchange matrixes 
-
-*/
-template<typename VEC>
-void 
-asm_exchange_coef_transp(const  VEC & Q){
-
-}; /* end of asm_exchange_coef_transp */
-
 } /* end of namespace */
-
 
 #endif
