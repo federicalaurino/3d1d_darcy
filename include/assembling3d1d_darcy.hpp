@@ -133,27 +133,38 @@ asm_exchange_mat
 	 const getfem::mesh_im & mim,
 	 const getfem::mesh_fem & mf_v, 
 	 const getfem::mesh_fem & mf_coefv,
-	 const VEC & Q,const MAT & Mbar
+	 const VEC & Q, const VEC & R, const MAT & Mbar
 	 ) 
 {
 	#ifdef M3D1D_VERBOSE_
 	cout << "    Assembling Bvv ..." << endl;  
 	#endif
-	getfem::asm_mass_matrix_param(Bvv, mim, mf_v, mf_coefv, Q); 
+    std::vector <scalar_type> coeff(Q.size());
+    for (int i=0; i< coeff.size(); i++)
+        coeff[i]= 2.0/R[i]*Q[i];
+	getfem::asm_mass_matrix_param(Bvv, mim, mf_v, mf_coefv, coeff); 
 	#ifdef M3D1D_VERBOSE_
 	cout << "    Assembling Bvt ..." << endl;
 	#endif
 	gmm::mult(Bvv, Mbar, Bvt);
 
-		#ifdef M3D1D_VERBOSE_
+    #ifdef M3D1D_VERBOSE_
 		cout << "    Assembling Btv (alternative form) ..." << endl;
-		#endif
-		gmm::copy(gmm::transposed(Bvt), Btv); 
-		#ifdef M3D1D_VERBOSE_
-		cout << "    Assembling Btt (alternative form) ..." << endl;
-		#endif
-		gmm::mult(gmm::transposed(Mbar), Bvt, Btt); 
-	
+    #endif
+    MAT Bvv_temp(gmm::mat_nrows(Bvv), gmm::mat_ncols(Bvv));
+    MAT Bvt_temp(gmm::mat_nrows(Bvt), gmm::mat_ncols(Bvt));
+    gmm::clear(Bvv_temp);
+    gmm::clear(Bvt_temp);
+    gmm::clear(coeff);
+    for (int i=0; i< coeff.size(); i++)
+        coeff[i]= 2.0*pi*R[i]*Q[i];
+    getfem::asm_mass_matrix_param(Bvv_temp, mim, mf_v, mf_coefv, coeff);
+    gmm::mult(Bvv_temp, Mbar, Bvt_temp);
+    gmm::copy(gmm::transposed(Bvt_temp), Btv); 
+    #ifdef M3D1D_VERBOSE_
+        cout << "    Assembling Btt (alternative form) ..." << endl;
+    #endif
+    gmm::mult(gmm::transposed(Mbar), Bvt_temp, Btt); 
 	
 } /* end of build_exchange_matrices */
 

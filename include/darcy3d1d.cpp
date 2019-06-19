@@ -533,7 +533,7 @@ namespace getfem {
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
     
         //TODO generalize to variable R
-        asm_exchange_mat(Btt, Btv, Bvt, Bvv,
+        /*asm_exchange_mat(Btt, Btv, Bvt, Bvv,
                 mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
         
         gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
@@ -555,7 +555,29 @@ namespace getfem {
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));        
+        */
+        asm_exchange_mat(Btt, Btv, Bvt, Bvv,
+                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), param_darcy.R(), Mbar);
         
+        gmm::add(Btt,			 
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(0, dof_darcy.Pt()), 
+                        gmm::sub_interval(0, dof_darcy.Pt()))); 
+        
+        gmm::add(gmm::scaled(Btv, -1.0),									
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(0, dof_darcy.Pt()),
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()))); 
+
+        gmm::add(gmm::scaled(Bvt, -1.0),  	
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
+                        gmm::sub_interval(0, dof_darcy.Pt())));
+
+        gmm::add(Bvv,								
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
+                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
         //***************************************
         //checkig matrices
         gmm::MatrixMarket_IO::write("Mbar.mm",Mbar);
@@ -839,7 +861,7 @@ namespace getfem {
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
     
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
-                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
+                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), param_darcy.R(), Mbar);
         
         gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
                     gmm::sub_matrix(AM_darcy, 
