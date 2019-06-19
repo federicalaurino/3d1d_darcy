@@ -531,31 +531,7 @@ namespace getfem {
         
         asm_exchange_aux_mat(Mbar, Mlin, 
                 mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
-    
-        //TODO generalize to variable R
-        /*asm_exchange_mat(Btt, Btv, Bvt, Bvv,
-                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
-        
-        gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
-                    gmm::sub_matrix(AM_darcy, 
-                        gmm::sub_interval(0, dof_darcy.Pt()), 
-                        gmm::sub_interval(0, dof_darcy.Pt()))); 
-        
-        gmm::add(gmm::scaled(Btv, -2.0*pi*param_darcy.R(0)),									
-                    gmm::sub_matrix(AM_darcy, 
-                        gmm::sub_interval(0, dof_darcy.Pt()),
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()))); 
 
-        gmm::add(gmm::scaled(Bvt, -2.0/param_darcy.R(0)),  	
-                    gmm::sub_matrix(AM_darcy, 
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
-                        gmm::sub_interval(0, dof_darcy.Pt())));
-
-        gmm::add(gmm::scaled(Bvv, 2.0/param_darcy.R(0)),								
-                    gmm::sub_matrix(AM_darcy, 
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
-                        gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));        
-        */
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
                 mimv, mf_Pv, mf_coefv, param_darcy.kappa(), param_darcy.R(), Mbar);
         
@@ -780,8 +756,63 @@ namespace getfem {
             gmm::SuperLU_solve(AM_darcy, UM_darcy, FM_darcy, cond);
             cout << "  Condition number (transport problem): " << cond << endl;
         }
-        
-        //TODO Add other solvers
+        else { // Iterative solver //
+            
+			gmm::iteration iter(descr_darcy.RES);  // iteration object with the max residu
+			iter.set_noisy(1);               // output of iterations (2: sub-iteration)
+			iter.set_maxiter(descr_darcy.MAXITER); // maximum number of iterations
+
+			// Preconditioners
+			//! TODO Add preconditioner choice to param file
+			// See \link http://download.gna.org/getfem/html/homepage/gmm/iter.html
+			gmm::identity_matrix PM; // no precond
+			//gmm::diagonal_precond<sparse_matrix_type> PM(AM); // diagonal preocond
+			//gmm::ilu_precond<sparse_matrix_type> PM(AM);
+			// ...
+			//gmm::clear(AM);
+			// See <http://download.gna.org/getfem/doc/gmmuser.pdf>, pag 15
+
+			double time_iter = gmm::uclock_sec();
+			if ( descr_darcy.SOLVE_METHOD == "CG" ) {
+                #ifdef M3D1D_VERBOSE_
+                    cout << "  Applying the Conjugate Gradient method ... " << endl;
+                #endif
+				gmm::identity_matrix PS;  // optional scalar product
+				gmm::cg(AM_darcy, UM_darcy, FM_darcy, PS, PM, iter);
+			}
+			else if ( descr_darcy.SOLVE_METHOD == "BiCGstab" ) {
+                #ifdef M3D1D_VERBOSE_
+                    cout << "  Applying the BiConjugate Gradient Stabilized method ... " << endl;
+                #endif
+				gmm::bicgstab(AM_darcy, UM_darcy, FM_darcy, PM, iter);
+			}
+			else if ( descr_darcy.SOLVE_METHOD == "GMRES" ) {
+                #ifdef M3D1D_VERBOSE_
+                    cout << "  Applying the Generalized Minimum Residual method ... " << endl;
+                #endif
+				size_type restart = 50;
+				gmm::gmres(AM_darcy, UM_darcy, FM_darcy, PM, restart, iter);
+			}
+			else if ( descr_darcy.SOLVE_METHOD == "QMR" ) {
+                #ifdef M3D1D_VERBOSE_
+                    cout << "  Applying the Quasi-Minimal Residual method ... " << endl;
+                #endif
+				gmm::qmr(AM_darcy, UM_darcy, FM_darcy, PM, iter);
+			}
+			else if ( descr_darcy.SOLVE_METHOD == "LSCG" ) {
+                #ifdef M3D1D_VERBOSE_
+                    cout << "  Applying the unpreconditionned Least Square CG method ... " << endl;
+                #endif
+				gmm::least_squares_cg(AM_darcy, UM_darcy, FM_darcy, iter);
+			}
+			// Check
+			if (iter.converged())
+				cout << "  ... converged in " << iter.get_iteration() << " iterations." << endl;
+			else if (iter.get_iteration() == descr_darcy.MAXITER)
+				cerr << "  ... reached the maximum number of iterations!" << endl;
+		}
+
+
         cout << endl<<"... total time to solve : " << gmm::uclock_sec() - time << " seconds\n";
         
         //export solution
