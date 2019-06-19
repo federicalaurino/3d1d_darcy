@@ -71,14 +71,15 @@ public:
 	bool solve_samg (void);
 	//! Export the solution
  	void export_vtk (void); 
+    //! Test with a given source on the 1D manifold
+    void test (void);
 	    
 	/*//! Compute mean concentration in the tissue
 	inline scalar_type mean_ct (void){ 
 		return asm_mean(mf_Ct, mimt, 
 			gmm::sub_vector(UM_transp, gmm::sub_interval(0,  dof_transp.Ct()))); 
 	}
-	void test(void);
-	void test2(void);*/
+    */
 
 protected:
 	 
@@ -190,9 +191,7 @@ protected:
 	//! Build the monolithic rhs FM_transp by blocks
 	//void assembly_rhs(void);
 	//void update(vector_type);
-    
-	
-	
+
 }; //end of class darcy3d1d
 
 }  //end of namespace

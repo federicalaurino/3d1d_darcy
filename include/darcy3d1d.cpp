@@ -224,9 +224,6 @@ namespace getfem {
     
 	void darcy3d1d::build_vessel_boundary (void)
     {
-        
-    //TODO Revise all the build_vessel_boundary
-
         #ifdef M3D1D_VERBOSE_
             cout << "Building vessel boundary ..." << endl;
         #endif
@@ -332,10 +329,6 @@ namespace getfem {
                 }
                 Jv_darcy[jj].value += param_darcy.R(mimv, branch);
                 Jv_darcy[jj].branches.emplace_back(-branch);
-                
-                //NOTE This makes no sense: why =0 should be a problem?
-                //GMM_ASSERT1(branch>0, 
-                       // "Error in network labeling: -0 makes no sense");
                 }
             }
 
@@ -438,20 +431,21 @@ namespace getfem {
 
         // Ckeck network assembly
         #ifdef M3D1D_VERBOSE_
-                cout << "--- NETWORK ASSEMBLY ------------------ "   << endl;
-                cout << "  Branches:   " << nb_branches << endl
-                    << "  Vertices:   " << meshv.convex_index().size()+1 << endl;
-                cout << "  Extrema:    " << extrema << endl;	  
-                for (size_type i=0; i<BCv_darcy.size(); ++i)
-                    cout << "    -  label=" << BCv_darcy[i].label 
-                        << ", value=" << BCv_darcy[i].value << ", ind=" << BCv_darcy[i].idx 
-                        << ", rg=" << BCv_darcy[i].rg << ", branches=" << BCv_darcy[i].branches << endl; 
-                cout << "  Junctions: " << junctions << endl;
-                for (size_type i=0; i<Jv_darcy.size(); ++i)
-                    cout << "    -  label=" << Jv_darcy[i].label 
-                        << ", value=" << Jv_darcy[i].value << ", ind=" << Jv_darcy[i].idx 
-                        << ", rg=" << Jv_darcy[i].rg << ", branches=" << Jv_darcy[i].branches << endl; 
-                cout << "---------------------------------------- "   << endl;
+            cout << "--- NETWORK ASSEMBLY ------------------ "   << endl;
+            cout << "  Branches:   " << nb_branches << endl
+                << "  Vertices:   " << meshv.convex_index().size()+1 << endl;
+            cout << "  Extrema:    " << extrema << endl;	  
+            for (size_type i=0; i<BCv_darcy.size(); ++i)
+                cout << "    -  label=" << BCv_darcy[i].label 
+                    << ", value=" << BCv_darcy[i].value << ", ind=" << BCv_darcy[i].idx 
+                    << ", rg=" << BCv_darcy[i].rg << ", branches=" << BCv_darcy[i].branches << endl; 
+            cout << "  Junctions: " << junctions << endl;
+            for (size_type i=0; i<Jv_darcy.size(); ++i)
+                cout << "    -  label=" << Jv_darcy[i].label 
+                    << ", value=" << Jv_darcy[i].value << ", ind=" << Jv_darcy[i].idx 
+                    << ", rg=" << Jv_darcy[i].rg << ", branches=" << Jv_darcy[i].branches << endl; 
+            cout << "---------------------------------------- "   << endl;
+            
         #endif
 
     } /* end of build_vessel_boundary */
@@ -736,40 +730,9 @@ namespace getfem {
         
         cout << "Solving with samg.." << endl;
         
-        scalar_type sz=5;
-        sparse_matrix_type X(sz,sz); gmm::clear(X);
-        std::ofstream outXcsr("X.txt");
-        outXcsr << "X = \n";
-        size_type cnt=1;
-        for(size_type i = 0; i < sz; i++){
-            outXcsr << " \n";
-            for(size_type j = 0; j < sz; j++){
-                X(i,j)=cnt;
-                cnt++;
-                X(2,2)=0;
-                X(3,1)=0;
-               outXcsr << X(i,j) << "  ";
-            }
-        }
-        
-        
-        outXcsr << " \n\n\n\n";
-        gmm::csr_matrix<scalar_type> X_csr;
-        gmm::copy(X, X_csr);
-        
-        outXcsr << "X_csr.pr = " << gmm::col_vector(X_csr.pr) << "\n";
-        outXcsr << "X_csr.ir = " << gmm::col_vector(X_csr.ir) << "\n";
-        outXcsr << "X_csr.jc = " << gmm::col_vector(X_csr.jc) << "\n";
-        outXcsr.close(); 
-        
-        std::vector <scalar_type> F(sz);
-        std::vector <scalar_type> U(sz);
-        for(int k=0; k< sz; k++) F[k]=1.0;
-        for(int k=0; k< sz; k++) U[k]=0.0;
-        
-        /*gmm::csr_matrix <scalar_type> AM_csr;
+        gmm::csr_matrix <scalar_type> AM_csr;
         gmm::copy(AM_darcy, AM_csr);
-        AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
+        /*AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
         sys.csr2samg();
         sys.solve();
         //solution
@@ -792,12 +755,11 @@ namespace getfem {
                 cout << "  Applying the SuperLU method ... " << endl;
             #endif	
             scalar_type cond;
-            //gmm::csc_matrix<scalar_type> A;
-            //gmm::copy(AM_darcy, A);
             gmm::SuperLU_solve(AM_darcy, UM_darcy, FM_darcy, cond);
             cout << "  Condition number (transport problem): " << cond << endl;
         }
         
+        //TODO Add other solvers
         cout << endl<<"... total time to solve : " << gmm::uclock_sec() - time << " seconds\n";
         
         //export solution
@@ -846,5 +808,63 @@ namespace getfem {
         #endif
             
     }; // end of export
+    
+    double U(const bgeot::base_node & x){ return 1.0-x[0];} //source
+    
+    void darcy3d1d::test ()
+    {
+        //Solving just the 3D problem with a fixed line source(x)=x-1
+        
+        //compute source
+        std::vector <scalar_type> source (dof_darcy.Pv()); gmm::clear(source);
+        interpolation_function(mf_Pv, source, U);
+        
+        //Assembling the matrix
+        gmm::resize(AM_darcy, dof_darcy.Pt(), dof_darcy.Pt()); gmm::clear(AM_darcy);
+        gmm::resize(UM_darcy, dof_darcy.Pt()); gmm::clear(UM_darcy);
+        gmm::resize(FM_darcy, dof_darcy.Pt()); gmm::clear(FM_darcy);
+        
+        // 3d darcy block
+        darcy3d1d::assembly3d_darcy();
+        // 3d1d block
+        sparse_matrix_type Btt(dof_darcy.Pt(), dof_darcy.Pt());gmm::clear(Btt);
+        sparse_matrix_type Btv(dof_darcy.Pt(), dof_darcy.Pv());gmm::clear(Btv);
+        sparse_matrix_type Bvt(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Bvt);
+        sparse_matrix_type Bvv(dof_darcy.Pv(), dof_darcy.Pv());gmm::clear(Bvv);
+
+        sparse_matrix_type Mbar(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mbar);
+        sparse_matrix_type Mlin(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mlin);
+        
+        asm_exchange_aux_mat(Mbar, Mlin, 
+                mimv, mf_Pt, mf_Pv, param_darcy.R(), descr_darcy.NInt);
+    
+        asm_exchange_mat(Btt, Btv, Bvt, Bvv,
+                mimv, mf_Pv, mf_coefv, param_darcy.kappa(), Mbar);
+        
+        gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(0, dof_darcy.Pt()), 
+                        gmm::sub_interval(0, dof_darcy.Pt()))); 
+        
+        gmm::mult(gmm::scaled(Btv, 2.0*pi*param_darcy.R(0)), source, FM_darcy);
+        
+        // Add boundary conditions
+        scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
+        darcy3d1d::asm_tissue_bc (FM_darcy, AM_darcy, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
+        
+        // Solve the problem
+        darcy3d1d::solve();
+         
+        // Export
+        vtk_export exp_Pt(descr_darcy.OUTPUT+"Pt.vtk");
+        exp_Pt.exporting(mf_Pt);
+        exp_Pt.write_mesh();
+        exp_Pt.write_point_data(mf_Pt, UM_darcy, "Pt");        
+        
+        vtk_export exp_source(descr_darcy.OUTPUT+"source.vtk");
+        exp_source.exporting(mf_Pv);
+        exp_source.write_mesh();
+        exp_source.write_point_data(mf_Pv, source, "Pv"); 
+    }
 
 } // end of namespace
