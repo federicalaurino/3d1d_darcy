@@ -26,7 +26,7 @@ std::vector<scalar_type> sol; //samg solution
 
 
 public:
-  
+//NOTE I thinnk it should not be necessery to pass also U_
 gmm::csr_matrix <scalar_type> A_csr_;
 std::vector <scalar_type> U_;
 std::vector <scalar_type> F_;
