@@ -1126,63 +1126,7 @@ problem3d1d::solve(void)
 		  
                       size_type restart = 50;
 
-                   /*     gmm::csr_matrix<double> Mtt;gmm::csr_matrix<double> Mtv;
-                        gmm::csr_matrix<double> Mtt1;gmm::csr_matrix<double> Mtv1;
-                        gmm::csr_matrix<double> Qtv;
-			cout << " starting copying" << endl;
-                        gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(0 , dim_u_t),
-                                                      gmm::sub_interval(0 , dim_u_t)), Mtt); // mass matrix tissue
-			 
-                         gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval( dof.Ut() + dof.Pt(),  dof.Uv()),
-                                                     gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv())), Mtv); // mass matrix vessel
-
-
-                        gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dof.Ut(), dof.Pt()),
-                                                      gmm::sub_interval(dof.Ut(), dof.Pt())), Mtt1); // coupling tissue
-			 
-                         gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dim_u_t + dof.Uv(), dof.Pv()),
-                                                     gmm::sub_interval(dim_u_t + dof.Uv(), dof.Pv())), Mtv1); // coupling vessel
-                        gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dim_u_t+dof.Uv(),dof.Pv()),
-                                                      gmm::sub_interval(dof.Ut(),dof.Pt())), Qtv);  
- 
-			// gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dof.Ut() + dof.Pt() , dof.Uv() + dof.Pv() ),
-                        //                             gmm::sub_interval(dof.Ut() + dof.Pt()  , dof.Uv() + dof.Pv())), Mtv);
-                        //std::cout<< Mtt << std::endl;
-                        cout << " starting precond" << endl;
-                        //cout<< "k_t"<< param.kt(0)<<endl;
-                        //   darcy_precond< gmm::csr_matrix<double>> precon(Mtt, mf_Pt, mimt); dim_matrix = dim_matrix_t;
-			darcy_precond_mon< gmm::csr_matrix<double>> precon(Mtt, mf_Pt, mimt, Mtv, mf_Pv, mimv);
-                        // darcy_precond_mon_coup< gmm::csr_matrix<double>> precon(Mtt, mf_Pt, mimt, Mtt1,Qtv, Mtv, mf_Pv, mimv,Mtv1);
-
-
-
-                        cout << " end precond" << endl;
-                        
-                        std::vector<double> solution(dim_matrix) , rhs(dim_matrix);
-                        gmm::copy(gmm::sub_vector(FM, gmm::sub_interval(0, dim_matrix)), rhs);
-
-		        cout << " starting gmres" << endl;
-                 
-                        double time3 = gmm::uclock_sec();
-
-                // precon
-	 	        gmm::gmres(gmm::sub_matrix(AM, gmm::sub_interval(0, dim_matrix),
-                                   gmm::sub_interval(0, dim_matrix)),    
-                                   solution,
-                                   rhs,
-                                   precon, restart, iter);
-	        #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- ... time to solveGmres::gmm: " << gmm::uclock_sec() - time3 << " seconds\n";
-		#endif
-		//cout << " starting gmres" << endl;
-                // gmm::copy(solution, gmm::sub_vector(UM, gmm::sub_interval(dof.Ut() + dof.Pt(), dim_matrix_v)));
-                gmm::copy(solution, gmm::sub_vector(UM, gmm::sub_interval(0, dim_matrix)));
-		//	gmm::gmres(A, UM, FM, PM, restart, iter);
-		*/
-                   
-                   //////////////////////////////////////////////////////////
-                   // Using new class for preconditioner
-                    darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt,
+                    darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
                         mf_Uvi, mf_Pv, mimv);
                    
                     std::vector<double> solution(dim_matrix) , rhs(dim_matrix);

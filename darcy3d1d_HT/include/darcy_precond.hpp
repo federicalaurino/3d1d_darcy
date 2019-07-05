@@ -117,6 +117,52 @@ template <typename Matrix> struct darcy_precond{
         
     } // end of build with
     
+    // Case of Mixed/Neumann conditions
+    void build_with ( const Matrix &A, const getfem::mesh_fem & mf_u, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim, const getfem::vector_type k){
+
+        dof_u = mf_u.nb_dof();
+        dof_p = mf_p.nb_dof();
+        
+        //build the preconditioner  blocks from the matrix A
+        
+        //diagonal block
+        
+        //Extract the mass matrix
+        Matrix M;
+        M.resize(dof_u, dof_u);
+        gmm::copy (gmm::sub_matrix(A,
+            gmm::sub_interval (0, dof_u),
+                                   gmm::sub_interval (0, dof_u)
+            ), M);
+        
+        D.build_with(M);
+        
+        //approximated schur block
+ 
+        gmm::resize(schur, dof_p, dof_p); gmm::clear(schur);
+        
+        const getfem::mesh &mesh = mf_p.linked_mesh();
+        getfem::mesh_region inner_faces = getfem::inner_faces_of_mesh(mesh);
+        getfem::mesh_region outer_faces;
+        getfem::outer_faces_of_mesh(mesh, outer_faces);
+        
+        getfem::ga_workspace wp;
+        std::vector<double> p(mf_p.nb_dof());
+        wp.add_fem_variable("p", mf_p, gmm::sub_interval(0,mf_p.nb_dof()), p);  
+        wp.add_fixed_size_constant("k", k);
+        wp.add_expression( "1 / element_size * (p - Interpolate(p, neighbour_elt))"
+                            " * (Test_p - Interpolate(Test_p, neighbour_elt))",
+                            mim, inner_faces);
+        // mix/neumann condition case
+        wp.add_expression("k*p*Test_p",
+                            mim, outer_faces);
+        //#endif
+        wp.assembly(2);
+
+        gmm::copy(wp.assembled_matrix(), schur);           
+        
+    } // end of build with
+    
     // default constructor
     darcy_precond(void) {} 
     //constructor
@@ -124,9 +170,15 @@ template <typename Matrix> struct darcy_precond{
         build_with(A, mf_u, mf_p, mim); 
     } 
     //constructor
-    darcy_precond(const Matrix &A, const getfem::vector<getfem::mesh_fem> & mf_u, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim) {
-        build_with(A, mf_u, mf_p, mim); 
+    darcy_precond(const Matrix &A, const getfem::vector<getfem::mesh_fem> & mf_ui, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim) {
+        build_with(A, mf_ui, mf_p, mim); 
     } 
+    //constructor
+    darcy_precond(const Matrix &A, const getfem::mesh_fem & mf_u, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim,
+        const getfem::vector_type k)
+    {
+        build_with(A, mf_u, mf_p, mim, k); 
+    }
     
     }; // end of struct
     
