@@ -1,4 +1,4 @@
-CPPFLAGS=-I../../include -I$(mkGetfemInc)
+CPPFLAGS=-I../../darcy3D_mixed/include -I$(mkGetfemInc)
 CXXFLAGS=-std=c++14 -D=M3D1D_VERBOSE_
 
 #CXXFLAGS += -I ${SAMG}/
@@ -10,7 +10,7 @@ else
   OPTFLAGS=-O3 -march=native
   CPPFLAGS+=-DNDEBUG
 endif
-LDFLAGS=-L../../lib -L$(mkGetfemLib)
+LDFLAGS=-L../../darcy3D_mixed/lib -L$(mkGetfemLib)
 
 #LDFLAGS += -L/opt/lib/samg/
 
@@ -19,7 +19,7 @@ LIBRARIES=-lproblem3d1d -lgetfem -lblas
 
 #LIBRARIES += -lamg -liomp5
 
-LINKLIBS := ../../lib/libproblem3d1d.a
+LINKLIBS := ../../darcy3D_mixed/lib/libproblem3d1d.a
 
 
 SRCS=$(wildcard *.cpp)
@@ -41,7 +41,7 @@ $(EXEC): $(OBJS)
 	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBRARIES)
 
 library:
-	$(MAKE) -C ../../include
+	$(MAKE) -C ../../darcy3D_mixed/include
 
 clean:
 	$(RM) $(OBJS) $(EXEC) *~ *.log
