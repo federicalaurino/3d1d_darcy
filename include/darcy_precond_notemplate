@@ -1,0 +1,183 @@
+/*  Class for darcy preconditioner for the 3D darcy problem:
+    P = [diag^-1 0 ; 0 schur^-1]
+    where diag is the diagonal of the velocity mass matrix and 
+    schur is an approximation of the schur complement given by the jumps of the pressure
+    across the internal faces + a boundary term
+*/
+
+ #include "gmm_fix.hpp"
+#include <gmm/gmm.h>
+#include <gmm/gmm_precond.h>
+//#include <getfem/getfem_mesh.h>
+#include <getfem/getfem_generic_assembly.h>
+#include <defines.hpp>
+
+namespace getfem{
+    
+template <class MATRIX> struct darcy_precond{
+    
+    vector_type diag;
+    sparse_matrix_type schur; 
+    
+    size_type dof_u;
+    size_type dof_p;
+    
+    size_type nrows = dof_u + dof_p;
+    size_type ncols = dof_u + dof_p;
+    
+    void build_with (const sparse_matrix_type &A, const mesh_fem & mf_u, const mesh_fem & mf_p, const mesh_im & mim){
+        //build the preconditioner  blocks from the matrix A
+        sparse_matrix_type M(mf_u.nb_dof(), mf_u.nb_dof()); gmm::clear(M);
+        gmm::add(gmm::sub_matrix(A, 
+                                 gmm::sub_interval(0, mf_u.nb_dof()), 
+                                 gmm::sub_interval(0, mf_u.nb_dof())), 
+                 M );
+        //diag of mass matrix block
+        gmm::resize(diag, mf_u.nb_dof()); gmm::clear(diag);
+        for (size_type i =0; i< mf_u.nb_dof(); i++)
+            diag[i] = M(i,i);
+        
+        
+        //approximated schur block
+        gmm::resize(schur, mf_p.nb_dof(), mf_p.nb_dof()); gmm::clear(schur);
+        
+        const getfem::mesh &mesh = mf_p.linked_mesh();
+        getfem::mesh_region inner_faces = getfem::inner_faces_of_mesh(mesh);
+        getfem::mesh_region outer_faces;
+        getfem::outer_faces_of_mesh(mesh, outer_faces);
+        
+        getfem::ga_workspace wp;
+        std::vector<double> p(mf_p.nb_dof());
+        wp.add_fem_variable("p", mf_p, gmm::sub_interval(0,mf_p.nb_dof()), p);  
+
+        //#ifdef USE_MP
+        //wp.add_expression("p*Test_p",mim);
+        //#else
+        //wp.add_expression("Grad_p.Grad_Test_p", mim);
+        //wp.add_expression("-0.5 * (Grad_p + Interpolate(Grad_p, neighbour_elt)).Normal"
+        //                    " * (Test_p - Interpolate(Test_p, neighbour_elt))"
+        //                    "-0.5 * (Grad_Test_p + Interpolate(Grad_Test_p, neighbour_elt)).Normal"
+        //                    " * (p - Interpolate(p, neighbour_elt))"
+        //                    "+2 / element_size * (p - Interpolate(p, neighbour_elt))"
+        //                    " * (Test_p - Interpolate(Test_p, neighbour_elt))",
+        //                    mim, inner_faces);
+        wp.add_expression( "1 / element_size * (p - Interpolate(p, neighbour_elt))"
+                            " * (Test_p - Interpolate(Test_p, neighbour_elt))",
+                            mim, inner_faces);
+        // to remove in case of mix/neumann condition
+        wp.add_expression("1/element_size*p*Test_p",
+                            mim, outer_faces);
+        //#endif
+        wp.assembly(2);
+
+        gmm::copy(wp.assembled_matrix(), schur);
+        
+        gmm::MatrixMarket_IO::write("schur.mm", schur); 
+        
+        
+    }
+    
+    darcy_precond() {} // default constructor
+    //constructor
+    darcy_precond(const sparse_matrix_type &A, const mesh_fem & mf_u, const mesh_fem & mf_p, const mesh_im & mim) { 
+        dof_u = mf_u.nb_dof();
+        dof_p = mf_p.nb_dof();
+        build_with(A, mf_u, mf_p, mim); 
+    } 
+    
+    
+    
+}; // end of struct
+
+
+} //end of namespace
+
+// Some redefinition needed for type darcy_precond
+namespace gmm {
+    
+// multiplication of the prec by a vector: P*vec -> res.
+// In our case we build P but what we have to do is P^-1*vec, therefore we solve the linear system P res =  vec 
+/*template <class MATRIX>
+void mult(const getfem::darcy_precond<MATRIX> &P, const getfem::vector_type &vec, getfem::vector_type &res){
+    std::cout << "-------------------Start mult in preconditioner" << std::endl;
+    gmm::resize(res, vec.size()); gmm::clear(res);
+    // vec = [ vec_u, vec_p]
+    getfem::vector_type vec_u (P.dof_u); gmm::clear(vec_u); 
+    getfem::vector_type vec_p (P.dof_p); gmm::clear(vec_p);
+    gmm::add(gmm::sub_vector(vec, gmm::sub_interval(0, P.dof_u)), vec_u);
+    gmm::add(gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), vec_p);
+    //    std::ofstream outvec_p("vecp.txt");
+	//	outvec_p << gmm::col_vector(vec_p);
+	//	outvec_p.close();
+        
+    // res = [ res_u, res_p]
+    getfem::vector_type res_u (P.dof_u); gmm::clear(res_u); 
+    getfem::vector_type res_p (P.dof_p); gmm::clear(res_p);
+    
+    // res_u = diag^-1 * vec_u
+    for (int i=0; i< P.dof_u; i++)
+        res_u[i] = 1/P.diag[i] * vec_u[i];
+    
+    // res_p = schur^-1 * vec_p
+    getfem::scalar_type cond;
+    gmm::SuperLU_solve(P.schur, res_p, vec_p, cond);
+    std::cout << "  Condition number schur: " << cond << std::endl;
+    //std::ofstream outres("result.txt");
+	//	outres << gmm::col_vector(res_p);
+	//	outres.close();
+    
+    gmm::add(res_u, gmm::sub_vector(res, gmm::sub_interval(0, P.dof_u)));
+    gmm::add(res_p, gmm::sub_vector(res, gmm::sub_interval( P.dof_u, P.dof_p)));
+    
+    std::cout << "-------------------End mult in preconditioner" << std::endl;
+
+}
+*/
+
+template <typename MATRIX, typename V1, typename V2>
+void mult(const getfem::darcy_precond<MATRIX> &P, const V1 &vec, V2 &res){
+    std::cout << "-------------------Start mult in preconditioner" << std::endl;
+    gmm::resize(res, vec.size()); gmm::clear(res);
+    // vec = [ vec_u, vec_p]
+    V1 vec_u (P.dof_u); gmm::clear(vec_u); 
+    V1 vec_p (P.dof_p); gmm::clear(vec_p);
+    gmm::add(gmm::sub_vector(vec, gmm::sub_interval(0, P.dof_u)), vec_u);
+    gmm::add(gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), vec_p);
+    //    std::ofstream outvec_p("vecp.txt");
+	//	outvec_p << gmm::col_vector(vec_p);
+	//	outvec_p.close();
+       
+    // res = [ res_u, res_p]
+    V2 res_u (P.dof_u); //gmm::clear(res_u); 
+    V2 res_p (P.dof_p); //gmm::clear(res_p);
+   /* 
+    // res_u = diag^-1 * vec_u
+    for (int i=0; i< P.dof_u; i++)
+        res_u[i] = 1/P.diag[i] * vec_u[i];
+    
+    // res_p = schur^-1 * vec_p
+    getfem::scalar_type cond;
+    gmm::SuperLU_solve(P.schur, res_p, vec_p, cond);
+    std::cout << "  Condition number schur: " << cond << std::endl;
+    //std::ofstream outres("result.txt");
+	//	outres << gmm::col_vector(res_p);
+	//	outres.close();
+    
+    gmm::add(res_u, gmm::sub_vector(res, gmm::sub_interval(0, P.dof_u)));
+    gmm::add(res_p, gmm::sub_vector(res, gmm::sub_interval( P.dof_u, P.dof_p)));
+    
+    std::cout << "-------------------End mult in preconditioner" << std::endl;*/
+
+}
+
+template <class MATRIX>
+    struct linalg_traits<getfem::darcy_precond<MATRIX>> {
+        using this_type = getfem::darcy_precond<MATRIX>;
+        using sub_orientation = owned_implementation;
+        static size_type nrows(const getfem::darcy_precond<MATRIX> &m) { 
+            return m.dof_u + m.dof_p; }
+        static size_type ncols(const getfem::darcy_precond<MATRIX> &m) { 
+            return m.dof_u + m.dof_p; }
+    };
+    
+} // end of namespace gmm

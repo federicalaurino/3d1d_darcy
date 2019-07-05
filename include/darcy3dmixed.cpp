@@ -41,6 +41,38 @@
 //#endif
 
 namespace getfem {
+    double Lx = 1.0, Ly = 1.0, Lz = 1.0, kappat = 1.0; 
+    //! Exact pressure 
+    double sol_pt(const bgeot::base_node & x){
+        return sin(2.0*pi/Lx*x[0])*sin(2.0*pi/Ly*x[1])*sin(2*pi/Lz*x[2]);
+    }
+    //! Exact x velocity
+    double sol_utx(const bgeot::base_node & x){
+        return -2.0*pi*kappat/Lx*cos(2.0*pi/Lx*x[0])*sin(2.0*pi/Ly*x[1])*sin(2.0*pi/Lz*x[2]);
+    }
+    //! Exact y velocity
+    double sol_uty(const bgeot::base_node & x){
+        return -2.0*pi*kappat/Ly*sin(2.0*pi/Lx*x[0])*cos(2.0*pi/Ly*x[1])*sin(2.0*pi/Lz*x[2]);
+    }
+    //! Exact z velocity
+    double sol_utz(const bgeot::base_node & x){
+        return -2.0*pi*kappat/Lz*sin(2.0*pi/Lx*x[0])*sin(2.0*pi/Ly*x[1])*cos(2.0*pi/Lz*x[2]);
+    }
+    //! Exact velocity magnitude
+    double sol_utm(const bgeot::base_node & x){
+        return sqrt(sol_utx(x)*sol_utx(x)+sol_uty(x)*sol_uty(x)+sol_utz(x)*sol_utz(x));
+    }
+    //! Exact vectorial velocity
+    std::vector<double> sol_ut(const bgeot::base_node & x){
+        std::vector<double> out(3);
+        out[0] = sol_utx(x); out[1] = sol_uty(x); out[2] = sol_utz(x);
+        return out;
+    }
+    //! Exact rhs
+    double sol_gt(const bgeot::base_node & x){
+        return 4.0*pi*pi*kappat*(1.0/(Lx*Lx)+1.0/(Ly*Ly)+1.0/(Lz*Lz))*sin(2.0*pi/Lx*x[0])*sin(2.0*pi/Ly*x[1])*sin(2.0*pi/Lz*x[2]);
+    }
+    
 
 	void darcy3dmixed::init (int argc, char *argv[]) 
 	{
@@ -107,32 +139,35 @@ namespace getfem {
 	{
 		std::cout<<"init part 2: set fem methods!......" <<std::endl;
         
-        #ifdef M3D1D_VERBOSE_
-            cout << "Setting IMs ..." << endl;
+          #ifdef M3D1D_VERBOSE_
+        cout << "Setting IMs for tissue and vessel problems ..." << endl;
         #endif
         pintegration_method pim_t = int_method_descriptor(descr_darcy.IM_TYPET);
         mimt.set_integration_method(mesht.convex_index(), pim_t);
         
         #ifdef M3D1D_VERBOSE_
-            cout << "Setting FEMs ..." << endl;
+        cout << "Setting FEMs for tissue and vessel problems ..." << endl;
         #endif
         bgeot::pgeometric_trans pgt_t = bgeot::geometric_trans_descriptor(descr_darcy.MESH_TYPET);
-        DIMT = pgt_t->dim();
         pfem pf_Ut = fem_descriptor(descr_darcy.FEM_TYPET_U);
-		pfem pf_Pt = fem_descriptor(descr_darcy.FEM_TYPET_P);
-        mf_Ut.set_qdim(bgeot::dim_type(DIMT)); 
+        pfem pf_Pt = fem_descriptor(descr_darcy.FEM_TYPET_P);
+        pfem pf_coeft = fem_descriptor(descr_darcy.FEM_TYPET_DATA);
+        DIMT = pgt_t->dim();	//DIMV = 1;
+        mf_Ut.set_qdim(bgeot::dim_type(DIMT));         
         mf_Ut.set_finite_element(mesht.convex_index(), pf_Ut);
-		mf_Pt.set_finite_element(mesht.convex_index(), pf_Pt);
-		pfem pf_coeft = fem_descriptor(descr_darcy.FEM_TYPET_DATA);
-		mf_coeft.set_finite_element(mesht.convex_index(), pf_coeft);
-		
+        std::cout<< mf_Ut.get_qdim() << " " << mf_Ut.fem_of_element(0)->target_dim() << std::endl;
+        GMM_ASSERT1(mf_Ut.get_qdim() == mf_Ut.fem_of_element(0)->target_dim(), 
+            "Intrinsic vectorial FEM used"); // RT0 IS INTRINSIC VECTORIAL!!!
+        mf_Pt.set_finite_element(mesht.convex_index(), pf_Pt);
+        mf_coeft.set_finite_element(mesht.convex_index(), pf_coeft); 
         #ifdef M3D1D_VERBOSE_
-            cout << "Setting FEM dimensions..." << endl;
+        cout << "Setting FEM dimensions for tissue and vessel problems ..." << endl;
         #endif
-		dof_darcy.set(mf_Ut, mf_Pt, mf_coeft);
+        dof_darcy.set(mf_Ut, mf_Pt, mf_coeft);
         #ifdef M3D1D_VERBOSE_
-		cout << std::scientific << dof_darcy;
+        cout << std::scientific << dof_darcy;
         #endif
+
     }
 
 
@@ -226,7 +261,7 @@ namespace getfem {
         gmm::add(M, gmm::sub_matrix(AM_darcy, gmm::sub_interval(0, dof_darcy.Ut()), gmm::sub_interval(0, dof_darcy.Ut())));
         gmm::add(F, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Ut())));
         //2 Build the monolithic rhs FM_darcy
-        //assembly_rhs();
+        assembly_rhs();
     } // end of assembly
     
         
@@ -237,38 +272,42 @@ namespace getfem {
         #endif
             
         // Assembling the mass matrix for velocity (u,u)
-        std::cout << "mass matrix" << endl;
         sparse_matrix_type Mtt(dof_darcy.Ut(), dof_darcy.Ut()); gmm::clear(Mtt);
         getfem::asm_mass_matrix(Mtt, mimt, mf_Ut);
+        // TODO generalize to vector Kp
         gmm::scale(Mtt, 1.0/param_darcy.Kp()[1]);
-        std::cout << "scaled matrix" << endl;
         gmm::add(Mtt, gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Ut()), 
                         gmm::sub_interval(0, dof_darcy.Ut())));
         
         // Assembling the mixed term -(p, \div u)
-        std::cout << "mixed term" << std::endl;
         sparse_matrix_type Dtt(dof_darcy.Pt(), dof_darcy.Ut()); gmm::clear(Dtt);
-        generic_assembly 
-        assem("M$1(#2,#1)+=comp(Base(#2).vGrad(#1))(:,:,i,i);");
-        assem.push_mi(mimt);
-        assem.push_mf(mf_Ut);
-        assem.push_mf(mf_Pt);
-        assem.push_mat(Dtt);
-        assem.assembly(mesh_region::all_convexes());
-               std::cout << "mixed term assembled" << std::endl;
-               
-        gmm::add(gmm::transposed(gmm::scaled(Dtt, -1.0)), gmm::sub_matrix(AM_darcy, 
+        getfem::asm_stokes_B (Dtt, mimt, mf_Ut, mf_Pt);
+        gmm::add(gmm::transposed(Dtt), gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Ut()), 
-                        gmm::sub_interval(0, dof_darcy.Pt())));
+                        gmm::sub_interval(dof_darcy.Ut(), dof_darcy.Pt())));
         
-        gmm::add(Dtt, gmm::sub_matrix(AM_darcy, 
+        gmm::add(gmm::scaled(Dtt, -1.0), gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Ut(), dof_darcy.Pt()), 
-                        gmm::sub_interval(0, dof_darcy.Pt())));
+                        gmm::sub_interval(0, dof_darcy.Ut())));
+
         
         gmm::clear(Mtt);
         gmm::clear(Dtt); 
     }
+    
+    
+    void darcy3dmixed::assembly_rhs(void)
+    {   
+        std::cout << "Adding Rhs..." << std::endl;
+        vector_type sol_Gt(mf_coeft.nb_dof()); gmm::clear(sol_Gt);
+        interpolation_function(mf_coeft, sol_Gt, sol_gt);
+        vector_type Gt(dof_darcy.Pt()); gmm::clear(Gt);
+        asm_source_term(Gt, mimt, mf_Pt, mf_coeft, sol_Gt);
+        gmm::add(Gt, gmm::sub_vector(FM_darcy,gmm::sub_interval(dof_darcy.Ut(), dof_darcy.Pt())));
+        gmm::clear(Gt);
+
+            }
     
     template<typename MAT, typename VEC>
     void
@@ -388,7 +427,8 @@ namespace getfem {
                     cout << "  Applying the Generalized Minimum Residual method ... " << endl;
                 #endif
 				size_type restart = 50;
-				gmm::gmres(AM_darcy, UM_darcy, FM_darcy, PM, restart, iter);
+                darcy_precond<sparse_matrix_type> P (AM_darcy, mf_Ut, mf_Pt, mimt);
+				gmm::gmres(AM_darcy, UM_darcy, FM_darcy, P, restart, iter);
 			}
 			else if ( descr_darcy.SOLVE_METHOD == "QMR" ) {
                 #ifdef M3D1D_VERBOSE_
@@ -412,9 +452,22 @@ namespace getfem {
 
         cout << endl<<"... total time to solve : " << gmm::uclock_sec() - time << " seconds\n";
         
-        //export solution
-        std::cout << "solved! going to export..." << std::endl; 
-
+        //extract the velocity
+        vector_type Ut(dof_darcy.Ut());
+        gmm::copy(gmm::sub_vector(UM_darcy, 
+                    gmm::sub_interval(0, dof_darcy.Ut())), Ut);
+        //exact sol
+        vector_type Ut_ex (dof_darcy.Ut()); gmm::clear(Ut_ex);
+        interpolation_function(mf_Ut, Ut_ex, sol_ut);
+        
+        scalar_type res = 0; 
+        for (int i=0; i< dof_darcy.Ut(); i++)
+            res += std::pow(Ut[i] - Ut_ex[i], 2);
+        res = std::sqrt(res);
+        
+        std::cout << "res" << res << std::endl;
+        
+        
         return true;
         
 	}; // end of solve
@@ -440,10 +493,59 @@ namespace getfem {
         #ifdef M3D1D_VERBOSE_
             cout << "  Exporting Ut ..." << endl;
         #endif
-        vtk_export exp_Ut(descr_darcy.OUTPUT+"Ut.vtk");
-        exp_Ut.exporting(mf_Ut);
-        exp_Ut.write_mesh();
-        exp_Ut.write_point_data(mf_Ut, Ut, "Ut");
+        pfem pf_Ut = fem_descriptor(descr_darcy.FEM_TYPET_U);
+        if(pf_Ut->is_lagrange()==0){ 
+            /*
+                There is no built-in export for non-lagrangian FEM.
+                If this is the case, we need to project before exporting.
+            */
+            #ifdef M3D1D_VERBOSE_
+            cout << "    Projecting Ut on P1 ..." << endl;
+            #endif
+            mesh_fem mf_P1(mesht);
+            mf_P1.set_qdim(bgeot::dim_type(DIMT)); 
+            mf_P1.set_classical_finite_element(1);
+            sparse_matrix_type M_RT0_P1(mf_P1.nb_dof(), dof_darcy.Ut());
+            sparse_matrix_type M_P1_P1(mf_P1.nb_dof(), mf_P1.nb_dof());
+            vector_type Ut_P1(mf_P1.nb_dof());
+                    asm_mass_matrix(M_RT0_P1, mimt, mf_P1, mf_Ut);
+            asm_mass_matrix(M_P1_P1,  mimt, mf_P1, mf_P1);
+            
+            vector_type Utt(mf_P1.nb_dof());
+            gmm::mult(M_RT0_P1, Ut, Utt);
+            double cond1;
+            gmm::SuperLU_solve(M_P1_P1, Ut_P1, Utt, cond1);
+
+            vtk_export exp1(descr_darcy.OUTPUT+"Ut.vtk");
+            exp1.exporting(mf_P1);
+            exp1.write_mesh();
+            exp1.write_point_data(mf_P1, Ut_P1, "Ut");
+            
+        #ifdef M3D1D_VERBOSE_
+            cout << "  Exporting Ut_ex ..." << endl;
+        #endif
+        vector_type Ut_ex(mf_P1.nb_dof());
+        interpolation_function(mf_P1, Ut_ex, sol_ut);
+        vtk_export exp_Utex(descr_darcy.OUTPUT+"Utexact.vtk");
+        exp_Utex.exporting(mf_P1);
+        exp_Utex.write_mesh();
+        exp_Utex.write_point_data(mf_P1, Ut_ex, "Utex");
+        }	
+        else {
+            vtk_export exp_Ut(descr_darcy.OUTPUT+"Ut.vtk");
+            exp_Ut.exporting(mf_Ut);
+            exp_Ut.write_mesh();
+            exp_Ut.write_point_data(mf_Ut, Ut, "Ut");	
+            #ifdef M3D1D_VERBOSE_
+                cout << "  Exporting Ut_ex ..." << endl;
+            #endif
+            vector_type Ut_ex(dof_darcy.Ut());
+            interpolation_function(mf_Ut, Ut_ex, sol_utm);
+            vtk_export exp_Utex(descr_darcy.OUTPUT+"Utexact.vtk");
+            exp_Utex.exporting(mf_Ut);
+            exp_Utex.write_mesh();
+            exp_Utex.write_point_data(mf_Ut, Ut_ex, "Utex");
+            }
         
         #ifdef M3D1D_VERBOSE_
             cout << "  Exporting Pt ..." << endl;
@@ -452,6 +554,17 @@ namespace getfem {
         exp_Pt.exporting(mf_Pt);
         exp_Pt.write_mesh();
         exp_Pt.write_point_data(mf_Pt, Pt, "Pt");
+        
+
+        #ifdef M3D1D_VERBOSE_
+            cout << "  Exporting Pt_ex ..." << endl;
+        #endif
+        vector_type Pt_ex(dof_darcy.Pt());
+        interpolation_function(mf_Pt, Pt_ex, sol_pt);
+        vtk_export exp_Ptex(descr_darcy.OUTPUT+"Ptexact.vtk");
+        exp_Ptex.exporting(mf_Pt);
+        exp_Ptex.write_mesh();
+        exp_Ptex.write_point_data(mf_Pt, Pt_ex, "Ptex");
 
 
         #ifdef M3D1D_VERBOSE_

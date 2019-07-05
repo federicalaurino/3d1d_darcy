@@ -62,7 +62,7 @@ struct descr3dmixed {
 	{
 		FILE_ = fname;
 	    MESH_TYPET  = FILE_.string_value("MESH_TYPET","3D mesh type");
-        FEM_TYPET_U   = FILE_.string_value("FEM_TYPET_P","FEM 3D tissue - velocity");
+        FEM_TYPET_U   = FILE_.string_value("FEM_TYPET_U","FEM 3D tissue - velocity");
 		FEM_TYPET_P   = FILE_.string_value("FEM_TYPET_P","FEM 3D tissue - pressure");
         FEM_TYPET_DATA   = FILE_.string_value("FEM_TYPET_DATA","FEM 3D tissue - data");
         IM_TYPET 	= FILE_.string_value("IM_TYPET","Name of integration method");

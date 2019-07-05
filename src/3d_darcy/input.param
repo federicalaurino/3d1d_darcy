@@ -27,7 +27,7 @@ OutputDirectory = './vtk/';
 %===================================
 % Flags to build a regular 3d mesh
 GT_T       = 'GT_PK(3,1)'; 
-NSUBDIV_T = '[11,11,11]'; 
+NSUBDIV_T = '[10,10,10]'; 
 ORG_T      = '[0,0,0]';
 SIZES_T    = '[1,1,1]';
 NOISED_T = '0';
@@ -41,19 +41,21 @@ MESH_TYPET  = 'GT_PK(3,1)';
 % GetFem type for the 1D mesh
 MESH_TYPEV  = 'GT_PK(1,1)';        
 % GetFem type for the 3D Finite Element Methods
-FEM_TYPET   = 'FEM_RT0(3)';% Flag to enable the curve model
+FEM_TYPET_U   = 'FEM_RT0(3)';% Flag to enable the curve model
 FEM_TYPET_P = 'FEM_PK_DISCONTINUOUS(3,0)';
 FEM_TYPET_DATA = 'FEM_PK(3,0)';  
 % GetFem type for the 3D Integration Method
-IM_TYPET    = 'IM_TETRAHEDRON(6)'; 
+IM_TYPET    = 'IM_TETRAHEDRON(8)'; 
 % Solver for the monolithic 3D/1D linear system
 % direct:    'SuperLU'
 % iterative: 'CG','BiCGstab','GMRES','QMR','LSCG'
-SOLVE_METHOD = 'SuperLU';
+SOLVE_METHOD = 'GMRES';
 % Maximum number of iterations for iterative solvers
-MAXITER  = 100;
+MAXITER  = 1000;
+% Residual GMRES
+RES = 1E-6;
 % Residu for conjugate gradient
-RESIDUAL = 1E-16;    
+RESIDUAL = 1E-6;    
 % Nb of discretisation point for 3D-1D interpolation
 NInt = 50;
 %===================================

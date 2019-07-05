@@ -37,13 +37,13 @@
 // Project headers
 #include <defines.hpp>      
 #include <mesh1d_darcy.hpp>
-#include <utilities_darcy.hpp>
-#include <assembling3d1d_darcy.hpp>
+//#include <utilities_darcy.hpp>
 #include <node.hpp>
 #include <dof3dmixed.hpp>
 #include <descr3dmixed.hpp>
 #include <param3dmixed.hpp>
-#include <AMG_Interface.hpp>
+//#include <AMG_Interface.hpp>
+#include <darcy_precond.hpp>
 
 #include <cmath>
 
@@ -151,10 +151,6 @@ protected:
     //! Build the monolithic matrix AM_transp by blocks
 	//! Assembling the 3D Darcy block
     void assembly3d_darcy (void);
-    //! Assembling the 1D Darcy block
-    void assembly1d_darcy (void);
-    //! Assembling the coupling terms
-    void assembly3d1d_darcy (void);
     //! Assembling the BC
     void assembly_bc (void);
     
@@ -179,9 +175,25 @@ protected:
         );
         
 	//! Build the monolithic rhs FM_transp by blocks
-	//void assembly_rhs(void);
-	//void update(vector_type);
+	void assembly_rhs(void);
 
+    /*//RHS and exact solution for test
+    //! Exact pressure 
+    double sol_pt(const bgeot::base_node & x);
+    //! Exact x velocity
+    double sol_utx(const bgeot::base_node & x);
+    //! Exact y velocity
+    double sol_uty(const bgeot::base_node & x);
+    //! Exact z velocity
+    double sol_utz(const bgeot::base_node & x);
+    //! Exact velocity magnitude
+    double sol_utm(const bgeot::base_node & x); 
+    //! Exact vectorial velocity
+    std::vector<double> sol_ut(const bgeot::base_node & x);
+    //! Exact rhs
+    double sol_gt(const bgeot::base_node & x);
+    
+*/
 }; //end of class darcy3d1d
 
 }  //end of namespace
