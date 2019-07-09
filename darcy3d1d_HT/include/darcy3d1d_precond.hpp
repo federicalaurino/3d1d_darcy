@@ -5,26 +5,18 @@
     across the internal faces + a boundary term
 */
 
-#include <darcy_precond.hpp>
+#include <darcy3D_precond.hpp>
+#include <darcy1D_precond.hpp>
     
 template <typename Matrix> struct darcy3d1d_precond{
     
-    //TODO add the possibility to have mixed bc !!!!!
-    
-    //gmm::diagonal_precond <Matrix> D;
-    //Matrix schur; 
-    
-    darcy_precond <Matrix> Prec_t;
-    darcy_precond <Matrix> Prec_v;
+    darcy3D_precond <Matrix> Prec_t;
+    darcy1D_precond <Matrix> Prec_v;
     
     getfem::size_type dof_ut;
     getfem::size_type dof_pt;
     getfem::size_type dof_uv;
     getfem::size_type dof_pv;
-    
-    //getfem::size_type nrows = dof_u + dof_p;
-    //getfem::size_type ncols = dof_u + dof_p;
-    
     
     // default constructor
     darcy3d1d_precond(void) {} 
@@ -39,93 +31,50 @@ template <typename Matrix> struct darcy3d1d_precond{
             dof_uv += mf_uvi[i].nb_dof();
         dof_pv = mf_pv.nb_dof();
         
-        Matrix M;
+        Matrix Mt;
+        Mt.resize(dof_ut + dof_pt, dof_ut + dof_pt);
         gmm::copy(gmm::sub_matrix(A,
-                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), M);
-        // build the tissue precond 
-        Prec_t.build_with(M, mf_ut, mf_pt, mimt);
+                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), Mt);
+        // build the tissue preconnd 
+        std::cout << "-----------------build the tissue preconnd" << std::endl; 
+        Prec_t.build_with(Mt, mf_ut, mf_pt, mimt);
         // build the vessel precond
-        gmm::clear(M);
+        Matrix Mv;
+        Mv.resize(dof_uv + dof_pv, dof_uv + dof_pv);
         gmm::copy(gmm::sub_matrix(A,
-                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), M);
-        Prec_v.build_with(M, mf_uvi, mf_pv, mimv);        
+                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), Mv);
+        std::cout << "-----------------build the vessel preconnd" << std::endl;         
+        Prec_v.build_with(Mv, mf_uvi, mf_pv, mimv);        
     } 
     
-    // constructor for preconditioner with conditions for tissue
+    // constructor for preconditioner with mixed conditions for tissue
         darcy3d1d_precond(const Matrix &A, const getfem::mesh_fem & mf_ut, const getfem::mesh_fem & mf_pt, const getfem::mesh_im & mimt,
                           const getfem::vector_type k,
                         const getfem::vector<getfem::mesh_fem> & mf_uvi, const getfem::mesh_fem & mf_pv, const getfem::mesh_im & mimv)
         {
+//        std::cout << "------entering the constructor" << std::endl;
         dof_ut = mf_ut.nb_dof();
         dof_pt = mf_pt.nb_dof();
         dof_uv = 0;
+//        std::cout << "------computing dof_uv" << std::endl;
         for (gmm::size_type i = 0; i<mf_uvi.size(); i++)
             dof_uv += mf_uvi[i].nb_dof();
         dof_pv = mf_pv.nb_dof();
-        
-        Matrix M;
+//        std::cout << "-----building prect" << std::endl;
+        Matrix Mt;
+        Mt.resize(dof_ut + dof_pt, dof_ut + dof_pt);
         gmm::copy(gmm::sub_matrix(A,
-                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), M);
+                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), Mt);
         // build the tissue precond with mixed condition 
-        Prec_t.build_with(M, mf_ut, mf_pt, mimt, k);
+        Prec_t.build_with(Mt, mf_ut, mf_pt, mimt, k);
         // build the vessel precond
-        gmm::clear(M);
+//        std::cout << "-----building precv" << std::endl;
+        Matrix Mv;
+        Mv.resize(dof_uv + dof_pv, dof_uv + dof_pv);
         gmm::copy(gmm::sub_matrix(A,
-                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), M);
-        Prec_v.build_with(M, mf_uvi, mf_pv, mimv);        
+                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), Mv);
+        Prec_v.build_with(Mv, mf_uvi, mf_pv, mimv);        
     }
-    
-    // constructor for preconditioner with mixed conditions for vessel
-        darcy3d1d_precond(const Matrix &A, const getfem::mesh_fem & mf_ut, const getfem::mesh_fem & mf_pt, const getfem::mesh_im & mimt,
-                        const getfem::vector<getfem::mesh_fem> & mf_uvi, const getfem::mesh_fem & mf_pv, const getfem::mesh_im & mimv,
-                        const getfem::vector_type k
-                         )
-        {
-        dof_ut = mf_ut.nb_dof();
-        dof_pt = mf_pt.nb_dof();
-        dof_uv = 0;
-        for (gmm::size_type i = 0; i<mf_uvi.size(); i++)
-            dof_uv += mf_uvi[i].nb_dof();
-        dof_pv = mf_pv.nb_dof();
-        
-        Matrix M;
-        gmm::copy(gmm::sub_matrix(A,
-                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), M);
-        // build the tissue precond 
-        Prec_t.build_with(M, mf_ut, mf_pt, mimt);
-        // build the vessel precond with mixed condition
-        gmm::clear(M);
-        gmm::copy(gmm::sub_matrix(A,
-                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), M);
-        Prec_v.build_with(M, mf_uvi, mf_pv, mimv, k);        
-    }
-    
-// constructor for preconditioner with mixed conditions for vessel and tissue
-        darcy3d1d_precond(const Matrix &A, const getfem::mesh_fem & mf_ut, const getfem::mesh_fem & mf_pt, const getfem::mesh_im & mimt,
-                           const getfem::vector_type kt,
-                        const getfem::vector<getfem::mesh_fem> & mf_uvi, const getfem::mesh_fem & mf_pv, const getfem::mesh_im & mimv,
-                        const getfem::vector_type kv
-                         )
-        {
-        dof_ut = mf_ut.nb_dof();
-        dof_pt = mf_pt.nb_dof();
-        dof_uv = 0;
-        for (gmm::size_type i = 0; i<mf_uvi.size(); i++)
-            dof_uv += mf_uvi[i].nb_dof();
-        dof_pv = mf_pv.nb_dof();
-        
-        Matrix M;
-        gmm::copy(gmm::sub_matrix(A,
-                        gmm::sub_interval(0, dof_ut + dof_pt), gmm::sub_interval(0, dof_ut + dof_pt)), M);
-        // build the tissue precond with mixed condition
-        Prec_t.build_with(M, mf_ut, mf_pt, mimt, kt);
-        // build the vessel precond with mixed condition
-        gmm::clear(M);
-        gmm::copy(gmm::sub_matrix(A,
-                                         gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv), gmm::sub_interval(dof_ut + dof_pt, dof_uv + dof_pv)), M);
-        Prec_v.build_with(M, mf_uvi, mf_pv, mimv, kv);        
-    }
-    
     
     }; // end of struct
     

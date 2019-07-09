@@ -45,6 +45,8 @@
 #ifndef APPL_INT
 #define APPL_INT int
 #endif
+
+#define M3D1D_VERBOSE_
 /* end of integer.h */
 namespace getfem {
 
@@ -1119,28 +1121,140 @@ problem3d1d::solve(void)
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the Generalized Minimum Residual method ... " << endl;
 			#endif
-               	  
-               	        #ifdef FIXP_GMRES
-               	        #else
-               	  // CLASSIC GMRES, it can be used in case of uncoupled problem
-		  
-                      size_type restart = 50;
+        
+            // decoupled case --> classic GMRES
+            if(gmm::vect_norm2(param.Q()) == 0){
+                    // CLASSIC GMRES, it can be used in case of uncoupled problem
+                        std::cout << "Uncoupled problem: classic preconditioned gmres" << std::endl;
+                        size_type restart = 50;
+                        std::cout << "------------start building prec" << std::endl;
+                        darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
+                            mf_Uvi, mf_Pv, mimv);
+                        
+                        std::cout << "------------end building prec" << std::endl;
+                        
+                        gmm::clear(UM);
+                        gmm::gmres(AM, UM, FM, P, restart, iter);
+            }
+            else{
+            // coupled case --> fixed point iteration
+            // Solve vessel problem uncoupled
+            // At step k : solve tissue problem with modified rhs (using vessel solution at k-1)
+            //             solve vessel problem with modified rhs (using tissue solution at k)
+                std::cout << "Coupled problem: fixed point iterations" << std::endl;
 
-                    darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
-                        mf_Uvi, mf_Pv, mimv);
-                   
-                    std::vector<double> solution(dim_matrix) , rhs(dim_matrix);
-                    gmm::copy(gmm::sub_vector(FM, gmm::sub_interval(0, dim_matrix)), rhs);
-                   
-                    gmm::gmres(gmm::sub_matrix(AM, gmm::sub_interval(0, dim_matrix),
-                                   gmm::sub_interval(0, dim_matrix)),    
-                                   solution,
-                                   rhs,
-                                   P, restart, iter);
-                    gmm::copy(solution, gmm::sub_vector(UM, gmm::sub_interval(0, dim_matrix)));
-		#endif
+                size_type restart = 50;
+
+                vector_type U_old (dof.tot()); gmm::clear (U_old);
+                vector_type U_new (dof.tot()); gmm::clear (U_new);
+                vector_type sol_t(dof.tissue()); 
+                vector_type sol_v(dof.vessel());
+                
+                // Modified rhs for the fixed point
+                vector_type rhs_fixp_t (dof.tissue()); gmm::clear (rhs_fixp_t);
+                vector_type rhs_fixp_v (dof.vessel()); gmm::clear (rhs_fixp_v);
+                
+                // Extract the coupling matrices
+                sparse_matrix_type Qtv(dof.Pt(), dof.Pv()); gmm::clear(Qtv);
+                gmm::add(gmm::sub_matrix(AM,
+                                gmm::sub_interval(dof.Ut(), dof.Pt()),
+                                            gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())),
+                            Qtv);
+                sparse_matrix_type Qvt(dof.Pv(), dof.Pt()); gmm::clear(Qvt);
+                gmm::add(gmm::sub_matrix(AM,
+                                gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
+                                            gmm::sub_interval(dof.Ut(), dof.Pt())),
+                            Qvt);
+                
+                // Extract tissue matrix
+                sparse_matrix_type Mt(dof.tissue(), dof.tissue()); gmm::clear(Mt);
+                gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(0, dof.tissue()), gmm::sub_interval(0, dof.tissue())),
+                    Mt);
+                sparse_matrix_type Mv(dof.vessel(), dof.vessel()); gmm::clear(Mv);
+                gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dof.tissue(), dof.vessel()), gmm::sub_interval(dof.tissue(), dof.vessel())),
+                    Mv);
+                
+                
+                // compute the preconditioners for tissue and vessel problem
+                darcy3D_precond <sparse_matrix_type> P_t(Mt, 
+                                mf_Ut, mf_Pt, mimt, param.kt());
+                std::cout << "------------built the preconditiner for the tissue" << std::endl;
+
+                //darcy1D_precond <sparse_matrix_type> P_v(Mv, 
+                //                mf_Uvi, mf_Pv, mimv);
+                
+                scalar_type cond;
+                
+                //residual, tolerance and max iter for the fixed point
+                vector_type res_sol(dof.tot());
+                scalar_type res_fixp = 1.0;
+                scalar_type eps_fixp = 1E-12;
+                size_type iter_fixp = 0;
+                size_type max_iter_fixp = 6;
+                               
+                
+                while (res_fixp > eps_fixp && iter_fixp < max_iter_fixp){
+                    
+                    iter_fixp++;
+                    gmm::clear(U_new);
+                    
+                    std::cout << "----Fix point: iteration " << iter_fixp << std::endl;
+                    
+                    // -> Solve the vessel problem at iter k using Uold for the tissue.
+                    //    At iter 1 Uold in the tissue is 0
+                    
+                    // modify the rhs for vessel
+                    gmm::clear(rhs_fixp_v);
+                    gmm::copy(gmm::sub_vector(FM, gmm::sub_interval(dof.tissue(), dof.vessel())), rhs_fixp_v);
+                    gmm::mult_add(Qvt, 
+                                  gmm::scaled(gmm::sub_vector(U_old, gmm::sub_interval(dof.Ut(), dof.Pt())), -1.0),
+                                  gmm::sub_vector(rhs_fixp_v, gmm::sub_interval(dof.Uv(), dof.Pv())));
+                    gmm::clear(sol_v);
+                    gmm::SuperLU_solve(Mv, sol_v, rhs_fixp_v, cond);
+
+                    gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
+                    
+                    // In alternative we can use gmres + P_v to solve also the vessel problem
+                    /*gmm::clear(sol_v);
+                    gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
+                    gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
+                    */
+                    // -> Solve the tissue problem at iter k using Unew for the vessel.
+                
+                    // Update the rhs for tissue
+                    gmm::clear(rhs_fixp_t);
+                    gmm::copy(gmm::sub_vector(FM, gmm::sub_interval(0, dof.tissue())), rhs_fixp_t);
+
+                    gmm::mult_add(Qtv, 
+                                  gmm::scaled(gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue() + dof.Uv(), dof.Pv())), -1.0),
+                                  gmm::sub_vector(rhs_fixp_t, gmm::sub_interval(dof.Ut(), dof.Pt())));
+                    
+                    // Solve the preconditioned tissue problem at iter k 
+                    gmm::clear(sol_t);
+                    iter.set_iteration(0)
+                    gmm::gmres(Mt,    
+                                    sol_t,
+                                    rhs_fixp_t,
+                                    P_t, restart, iter);
+                    gmm::SuperLU_solve(Mt, sol_t, rhs_fixp_t, cond);
+                    gmm::copy(sol_t, gmm::sub_vector(U_new, gmm::sub_interval(0, dof.tissue())));
+                    
+                    // Compute residual
+                    gmm::clear(res_sol);
+                    gmm::add(U_new, gmm::scaled(U_old, -1.0), res_sol);
+                    res_fixp = gmm::vect_norm2(res_sol) / (gmm::vect_norm2(U_old) + 1E-18);
+
+                    
+                    gmm::clear(U_old); 
+                    gmm::copy(U_new, U_old);
+                    
+                } // end while cycle
+                
+                gmm::copy(U_new, UM);
+               
+            }
 		
-		}
+		} // end if gmres
 		else if ( descr.SOLVE_METHOD == "QMR" ) {
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the Quasi-Minimal Residual method ... " << endl;

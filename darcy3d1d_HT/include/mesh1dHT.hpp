@@ -91,7 +91,7 @@ import_pts_file_HT(
 
 	size_type globalBoundaries = 0;
     
-    //generalizing to branches with different nb of dof
+    // generalizing to branches with different nb of dof
     size_type shift=0;
 
 	while (bgeot::read_until(ist, "BEGIN_ARC")) {
@@ -143,6 +143,8 @@ import_pts_file_HT(
 					else
                     //uvi=U[(Nb-1)*mf_u[Nb-1].nb_dof()+last_u];
 					uvi=U[shift+last_u];
+                    std::cout << "-----------bcflag = " << bcflag << std::endl;
+                    std::cout << "-----------uvi = " << uvi << std::endl;
                     if (bcflag == 1 && uvi >0) {
 						BCA.label = BCtype; 
 						BCA.value = stof(value); 
