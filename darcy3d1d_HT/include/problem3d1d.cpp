@@ -1231,7 +1231,7 @@ problem3d1d::solve(void)
                     
                     // Solve the preconditioned tissue problem at iter k 
                     gmm::clear(sol_t);
-                    iter.set_iteration(0)
+                    iter.set_iteration(0);
                     gmm::gmres(Mt,    
                                     sol_t,
                                     rhs_fixp_t,
