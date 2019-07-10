@@ -123,7 +123,7 @@ darcy_precond_vessel<MATRIX>::darcy_precond_vessel(const MATRIX &A,
     wp.add_expression("Grad_p.Grad_Test_p ", mim);
       // wpv.add_expression(" 1.e-8*p*Test_p ", mim_v);
      // wpv.add_expression("-Grad_p.Normal *Test_p - Grad_Test_p.Normal * p + 2 / element_size * p * Test_p  ", mim_v, outer_faces_v);
-     wp.add_expression(" 10* p * Test_p  ", mim, outer_faces); // 1 p q 
+     wp.add_expression(" 1* p * Test_p  ", mim, outer_faces); // 1 p q 
     
            // for dir=0 bc-condition
     wp.assembly(2);

@@ -1135,6 +1135,9 @@ problem3d1d::solve(void)
                         
                         gmm::clear(UM);
                         gmm::gmres(AM, UM, FM, P, restart, iter);
+                        
+                        
+                        
             }
             else{
             // coupled case --> fixed point iteration
@@ -1180,9 +1183,9 @@ problem3d1d::solve(void)
                                 mf_Ut, mf_Pt, mimt, param.kt());
                 std::cout << "------------built the preconditiner for the tissue" << std::endl;
 
-                //darcy1D_precond <sparse_matrix_type> P_v(Mv, 
-                //                mf_Uvi, mf_Pv, mimv);
-                
+                darcy1D_precond <sparse_matrix_type> P_v(Mv, 
+                                mf_Uvi, mf_Pv, mimv);
+
                 scalar_type cond;
                 
                 //residual, tolerance and max iter for the fixed point
@@ -1209,16 +1212,16 @@ problem3d1d::solve(void)
                     gmm::mult_add(Qvt, 
                                   gmm::scaled(gmm::sub_vector(U_old, gmm::sub_interval(dof.Ut(), dof.Pt())), -1.0),
                                   gmm::sub_vector(rhs_fixp_v, gmm::sub_interval(dof.Uv(), dof.Pv())));
-                    gmm::clear(sol_v);
+                    /*gmm::clear(sol_v);//                      
                     gmm::SuperLU_solve(Mv, sol_v, rhs_fixp_v, cond);
-
-                    gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
-                    
-                    // In alternative we can use gmres + P_v to solve also the vessel problem
-                    /*gmm::clear(sol_v);
-                    gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
+ 
                     gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
                     */
+                    // In alternative we can use gmres + P_v to solve also the vessel problem
+                    gmm::clear(sol_v);
+                    gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
+                    gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
+                    
                     // -> Solve the tissue problem at iter k using Unew for the vessel.
                 
                     // Update the rhs for tissue

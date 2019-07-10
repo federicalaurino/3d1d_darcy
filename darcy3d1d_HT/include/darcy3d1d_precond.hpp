@@ -94,7 +94,7 @@ void mult(const darcy3d1d_precond<Matrix> &P, const V1 &vec, V2 &res) {
 
     // multiplication of the vessel block
     std::vector<gmm::size_type> ipvt1(P.dof_uv + P.dof_pv);
-    for(gmm::size_type i=P.dof_ut + P.dof_pt; i< P.dof_ut + P.dof_pt + P.dof_uv + P.dof_pv; i++ ) ipvt1[i] = i;
+    for(gmm::size_type i = P.dof_ut + P.dof_pt; i< P.dof_ut + P.dof_pt + P.dof_uv + P.dof_pv; i++ ) ipvt1[i - (P.dof_ut + P.dof_pt)] = i;
     gmm::unsorted_sub_index interval1;
     interval1 = gmm::unsorted_sub_index(ipvt1);
     mult(P.Prec_v, gmm::sub_vector(vec, interval1), gmm::sub_vector(res, interval1));

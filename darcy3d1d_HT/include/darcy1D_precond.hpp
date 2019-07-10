@@ -42,10 +42,11 @@ template <typename Matrix> struct darcy1D_precond{
             gmm::sub_interval (0, dof_u),
                                    gmm::sub_interval (0, dof_u)
             ), M);
-//        std::cout << "---------Extracted the mass matrix" << std::endl;
+
 //        std::cout << "---------Build diagonal" << std::endl;
         D.build_with(M);
 //        std::cout << "---------End building diagonal" << std::endl;
+
         
         //approximated schur block
  
@@ -60,14 +61,10 @@ template <typename Matrix> struct darcy1D_precond{
         getfem::ga_workspace wp;
         std::vector<double> p(mf_p.nb_dof());
         wp.add_fem_variable("p", mf_p, gmm::sub_interval(0,mf_p.nb_dof()), p);  
-
         wp.add_expression( "Grad_p.Grad_Test_p",mim);
         // to remove in case of mix/neumann condition
-        wp.add_expression("10*p * Test_p  ",
+        wp.add_expression("1*p * Test_p  ",
                             mim, outer_faces);
-        //#endif
-//        std::cout << "---------start assembly" << std::endl;
-
         wp.assembly(2);
 //        std::cout << "---------end workspace" << std::endl;
         gmm::copy(wp.assembled_matrix(), schur);           

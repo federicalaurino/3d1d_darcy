@@ -25,7 +25,7 @@ template <typename Matrix> struct darcy3D_precond{
     
     // Case of Dirichlet boundary condition
     void build_with ( const Matrix &A, const getfem::mesh_fem & mf_u, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim){
-
+    
         dof_u = mf_u.nb_dof();
         dof_p = mf_p.nb_dof();
         
@@ -40,8 +40,10 @@ template <typename Matrix> struct darcy3D_precond{
             gmm::sub_interval (0, dof_u),
                                    gmm::sub_interval (0, dof_u)
             ), M);
+
         
         D.build_with(M);
+
         
         //approximated schur block
  
@@ -86,9 +88,10 @@ template <typename Matrix> struct darcy3D_precond{
             gmm::sub_interval (0, dof_u),
                                    gmm::sub_interval (0, dof_u)
             ), M);
+
         
         D.build_with(M);
-        
+
         //approximated schur block
  
         gmm::resize(schur, dof_p, dof_p); gmm::clear(schur);
