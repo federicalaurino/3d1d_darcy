@@ -1219,6 +1219,7 @@ problem3d1d::solve(void)
                     */
                     // In alternative we can use gmres + P_v to solve also the vessel problem
                     gmm::clear(sol_v);
+                    iter.set_iteration(0);
                     gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
                     gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
                     
