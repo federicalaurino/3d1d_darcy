@@ -17,6 +17,8 @@
 #ifndef M3D1D_PROBLEM3D1D_HPP_
 #define M3D1D_PROBLEM3D1D_HPP_
 
+#define WITH_AMG
+
 // GetFem++ libraries
 #include <getfem/getfem_assembling.h> 
 #include <getfem/getfem_import.h>
@@ -98,7 +100,7 @@ public:
 		Solve the monolithic system AM*UM=FM (direct or iterative)
 	 */
 	bool solve (void);
-	bool solve_samg (void);
+	//bool solve_samg (void);
 	bool solve_fixpoint (void);
 	//! Solve the problem with arterial-venous network
 	/*!

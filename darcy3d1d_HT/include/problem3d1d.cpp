@@ -14,7 +14,7 @@
   @brief  Definition of the main class for the 3D/1D coupled problem.
  */
 #include <problem3d1d.hpp>
-#include <AMG_Interface.hpp>
+//#include <AMG_Interface.hpp>
 #include <cmath>
 //#include "darcy_preconditioner.hpp"
 // #include "darcy_preconditioner_vessel.hpp"
@@ -35,15 +35,15 @@
 
 //#define FIXP_GMRES // to comment in case of uncoupled system
 
-#ifdef WITH_SAMG
-#include "samg.h"
-#define DIRECT_SOLVER 
-//#define AMG_STAND_ALONE
-//#define AMG_ACCELERATED
-#endif
-/* default 4 Byte integer types */
-#ifndef APPL_INT
-#define APPL_INT int
+#if WITH_SAMG == 1
+	#include "samg.h"
+	#define DIRECT_SOLVER 
+	//#define AMG_STAND_ALONE
+	//#define AMG_ACCELERATED
+	#endif
+	/* default 4 Byte integer types */
+	#ifndef APPL_INT
+	#define APPL_INT int
 #endif
 
 #define M3D1D_VERBOSE_
@@ -1068,24 +1068,19 @@ problem3d1d::solve(void)
 			gmm::sub_interval(0 , dim_matrix),
 			gmm::sub_interval(0 , dim_matrix)), A_csr);*/
 
-                double time2 = gmm::uclock_sec();
+        double time2 = gmm::uclock_sec();
+        std::cout << "------Solving the monolithic system using SuperLU" << std::endl;
 		gmm::SuperLU_solve(gmm::sub_matrix(A,
 			gmm::sub_interval(0 , dim_matrix),
 			gmm::sub_interval(0 , dim_matrix)), gmm::sub_vector(UM,gmm::sub_interval(0,dim_matrix)), gmm::sub_vector(FM,gmm::sub_interval(0,dim_matrix)), cond);
-		#ifdef M3D1D_VERBOSE_ 
+
 		cout << "  Condition number : " << cond << endl;
-		cout << "-----ZZZZZ ----- ... time to solveLu : " << gmm::uclock_sec() - time2 << " seconds\n";
-                #endif
+		cout << "----- ... time to solveLu : " << gmm::uclock_sec() - time2 << " seconds\n";
 	//	gmm::SuperLU_solve(gmm::sub_matrix(A,
 	//		gmm::sub_interval(dim_matrix , dim_matrix_v),
 	//		gmm::sub_interval(dim_matrix , dim_matrix_v)), gmm::sub_vector(UM,gmm::sub_interval(dim_matrix,dim_matrix_v)),
 	//		 gmm::sub_vector(FM,gmm::sub_interval(dim_matrix,dim_matrix_v)), cond);
-		
-                #ifdef M3D1D_VERBOSE_ 
-                cout << "  Condition number : " << cond << endl;
-		#endif 
-    
-    
+
 	}
 	else { // Iterative solver //
 
@@ -1124,20 +1119,17 @@ problem3d1d::solve(void)
         
             // decoupled case --> classic GMRES
             if(gmm::vect_norm2(param.Q()) == 0){
-                    // CLASSIC GMRES, it can be used in case of uncoupled problem
-                        std::cout << "Uncoupled problem: classic preconditioned gmres" << std::endl;
-                        size_type restart = 50;
-                        std::cout << "------------start building prec" << std::endl;
-                        darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
-                            mf_Uvi, mf_Pv, mimv);
-                        
-                        std::cout << "------------end building prec" << std::endl;
-                        
-                        gmm::clear(UM);
-                        gmm::gmres(AM, UM, FM, P, restart, iter);
-                        
-                        
-                        
+            // CLASSIC GMRES, it can be used in case of uncoupled problem
+                std::cout << "Uncoupled problem: classic preconditioned gmres" << std::endl;
+                size_type restart = 50;
+                std::cout << "------------start building prec" << std::endl;
+                darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
+                    mf_Uvi, mf_Pv, mimv);
+                std::cout << "------------end building prec" << std::endl;
+                
+                gmm::clear(UM);
+                gmm::gmres(AM, UM, FM, P, restart, iter);
+                            
             }
             else{
             // coupled case --> fixed point iteration
@@ -1179,13 +1171,17 @@ problem3d1d::solve(void)
                 
                 
                 // compute the preconditioners for tissue and vessel problem
+                std::cout << "------------build the preconditiner for the tissue" << std::endl;
                 darcy3D_precond <sparse_matrix_type> P_t(Mt, 
                                 mf_Ut, mf_Pt, mimt, param.kt());
-                std::cout << "------------built the preconditiner for the tissue" << std::endl;
 
+                std::cout << "------------end build the preconditiner for the tissue" << std::endl;
+
+                std::cout << "------------build the preconditiner for the vessels" << std::endl;
                 darcy1D_precond <sparse_matrix_type> P_v(Mv, 
                                 mf_Uvi, mf_Pv, mimv);
-
+                std::cout << "------------end build the preconditiner for the vessels" << std::endl;
+                
                 scalar_type cond;
                 
                 //residual, tolerance and max iter for the fixed point
@@ -1240,7 +1236,7 @@ problem3d1d::solve(void)
                                     sol_t,
                                     rhs_fixp_t,
                                     P_t, restart, iter);
-                    gmm::SuperLU_solve(Mt, sol_t, rhs_fixp_t, cond);
+                    //gmm::SuperLU_solve(Mt, sol_t, rhs_fixp_t, cond);
                     gmm::copy(sol_t, gmm::sub_vector(U_new, gmm::sub_interval(0, dof.tissue())));
                     
                     // Compute residual
@@ -1344,7 +1340,7 @@ problem3d1d::solve(void)
 }
 
 
-	bool problem3d1d::solve_samg (void)
+/*	bool problem3d1d::solve_samg (void)
 	{
 #ifdef WITH_SAMG	
 #ifdef M3D1D_VERBOSE_
@@ -1425,7 +1421,7 @@ std::cout<< "Error you are trying to solve with samg calling solve_samg"<<std::e
 			return true;
 			}; // end of solve_samg
 
-
+*/
 
 vector_type
 problem3d1d::compute_lymphatics(vector_type U_O)
@@ -1454,6 +1450,8 @@ problem3d1d::compute_lymphatics(vector_type U_O)
 return QLF_FM;
 }
 
+
+
 vector_type 
 problem3d1d::modify_vector_LF(vector_type U_O, vector_type F_N)
 {
@@ -1465,7 +1463,6 @@ problem3d1d::modify_vector_LF(vector_type U_O, vector_type F_N)
 
 	return F_N;
 }
-
 
 vector_type 
 problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){

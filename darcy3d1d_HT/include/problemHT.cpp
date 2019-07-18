@@ -761,27 +761,12 @@ problemHT::solve_fixpoint_HT(void)
 	for(size_type i=0; i<nb_branches; ++i){
 
 		if(i>0) shift += mf_Uvi[i-1].nb_dof();
-//scalar_type Ri = param.Ri(i);
 		scalar_type Ri = param.R(mimv, i);
-// cout << " ----------raggio.." <<Ri << endl;
-//scalar_type kvi = param.kv(i);
-	        scalar_type kvi = param.kv(mimv, i);
-// cout << " ----------kvi.." <<kvi << endl;
-
-		/* Va questo nel caso curvo?
-		// Coefficient \pi^2*Ri'^4/\kappa_v
-		vector_type ci(mf_coefvi[i].nb_dof(), pi*pi*Ri*Ri*Ri*Ri/kvi);
-		*/ //o questo?
+		scalar_type kvi = param.kv(mimv, i);
 		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 		for(size_type j=0; j<mf_coefvi[i].nb_dof(); ++j){
 			ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri);
-// 			cout<<" ci"<<ci[j];
-// 			cout<<" Ri"<<Ri;
-// 			cout<<" kvi"<<kvi;
-// 			cout<<" curv"<<param.Curv(i,j)<<endl;
-
-		}
-// 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
+			}
 		// Allocate temp local matrices
 		sparse_matrix_type Mvvi(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
 		sparse_matrix_type Dvvi(dof.Pv(), mf_Uvi[i].nb_dof());
@@ -920,12 +905,6 @@ while(RK && iteration < max_iteration)
 		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
 		for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
 			{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
-// cout << "-------- ci  "<<ci[j]<< " ";
-// 			cout<<" Ri"<<Ri;
-// 			cout<<" kvi"<<kvi;
-// 			cout<<" curv"<<param.Curv(i,j)<<endl;
-// 	cout << "mu_start" << mu_start << endl;
-// cout << "mui[j]" <<mui[j] << endl;
 			}
 // 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
 		// Allocate temp local matrices

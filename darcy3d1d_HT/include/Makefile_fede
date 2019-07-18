@@ -47,6 +47,9 @@ library: $(LIBOBJS)
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -o $@ -c $<
+ 
+problem3d1d.cpp: darcy_preconditioner_mon.hpp darcy_preconditioner.hpp darcy_preconditioner_mon_coup.hpp darcy_preconditioner_tissue_coup.hpp
+	@touch $@
 
 clean:
 	$(RM) $(LIBOBJS) *~
