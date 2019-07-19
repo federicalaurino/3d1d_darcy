@@ -63,8 +63,6 @@ namespace getfem {
 
 /*!
 	Import the network points from the file of points (pts) and build the mesh.
-
-	\ingroup geom
  */
 //! \note It also build vessel mesh regions (#=0 for branch 0, #=1 for branch 1, ...).
 template<typename VEC>
@@ -219,87 +217,6 @@ void import_pts_file(
 		
 } /* end of import_pts_file */
 
-
-/*!
-	Compute the cartesian components of the network tangent versor 
-	@f$\mathbf{\lambda}@f$.
-
-	\ingroup geom
- */
-template<typename VEC>
-void 
-asm_tangent_versor(
-		std::istream & ist, 
-		VEC & lambdax, 
-		VEC & lambday, 
-		VEC & lambdaz
-		) 
-{
-	lambdax.resize(0); lambdax.clear();
-	lambday.resize(0); lambday.clear();
-	lambdaz.resize(0); lambdaz.clear();
-	
-	ist.precision(16);
-	ist.seekg(0); ist.clear();
-	GMM_ASSERT1(bgeot::read_until(ist, "BEGIN_LIST"), "This seems not to be a data file");
-
-	int Nb = 0;
-	
-	// Read a branch
-	while (bgeot::read_until(ist, "BEGIN_ARC")) {
-		
-		Nb++;
-		std::vector<base_node> lpoints; 
-		std::vector<scalar_type> tmpv(4);
-		bool thend=false;
-		std::string tmp;
-		int d=0;
-	
-		while (!thend) {
-			bgeot::get_token(ist, tmp, 1023);
-			if (tmp.compare("END_ARC") == 0) { 
-				thend = true;
-			}
-			else if(tmp.find("BC")!=std::string::npos){
-				bgeot::get_token(ist, tmp, 1023);
-				if(tmp.find("DIR")!=std::string::npos){
-					bgeot::get_token(ist, tmp, 1023);
-				}
-				else if(tmp.find("MIX")!=std::string::npos){
-					bgeot::get_token(ist, tmp, 1023);
-				}
-				else if(tmp.find("INT")!=std::string::npos){
-					//
-				}
-				else GMM_ASSERT1(0, "Syntax error in file, at token '" << tmp << "', pos=" << std::streamoff(ist.tellg()));
-			}
-			else if (tmp.size() == 0) {
-				GMM_ASSERT1(0, "Syntax error in file, at token '" << tmp << "', pos=" << std::streamoff(ist.tellg()));
-			} 
-			else { /* "point" case */
-				int i=d++%5;
-				if(i==1 || i==2 || i==3) tmpv[i] = stof(tmp);
-				if(i==3){
-					base_node tmpn(tmpv[1], tmpv[2], tmpv[3]);
-					lpoints.push_back(tmpn);
-				}
-				if (tmp.compare("END_ARC") == 0) thend = true;
-			} 
-		}
-		// Compute the tangent versor
-		// It is assumed to be constant over each branch
-		scalar_type lx = lpoints[1][0]-lpoints[0][0];
-		scalar_type ly = lpoints[1][1]-lpoints[0][1];
-		scalar_type lz = lpoints[1][2]-lpoints[0][2];
-		scalar_type lnorm = sqrt(lx*lx+ly*ly+lz*lz);
-		
-		lambdax.emplace_back(lx/lnorm);
-		lambday.emplace_back(ly/lnorm);
-		lambdaz.emplace_back(lz/lnorm);
-
-	}
-	
-}
 
 /*!
 	Import the network radius @f$R(s)=\sum_{i=1}^N R_i~\delta_{\Lambda_i}(s)@f$.

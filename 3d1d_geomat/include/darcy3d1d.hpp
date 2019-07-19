@@ -11,7 +11,7 @@
  
 #ifndef M3D1D_DARCY3D1D_HPP_
 #define M3D1D_DARCY3D1D_HPP_
-//#define WITH_AMG
+#define WITH_AMG
 
 // GetFem++ libraries
 #include <getfem/getfem_assembling.h> 

@@ -661,12 +661,12 @@ namespace getfem {
   #if WITH_SAMG == 1 
     bool darcy3d1d::solve_samg(void)
     {   
-        
         cout << "Solving with samg.." << endl;
         
         gmm::csr_matrix <scalar_type> AM_csr;
         gmm::copy(AM_darcy, AM_csr);
-        AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
+        //AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
+        AMG sys(AM_csr, FM_darcy);
         sys.csr2samg();
         sys.solve();
         //solution

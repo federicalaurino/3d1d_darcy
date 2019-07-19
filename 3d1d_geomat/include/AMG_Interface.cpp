@@ -2,29 +2,26 @@
 #include "AMG_Interface.hpp" 
 #include <iostream>
 #include <fstream>
-#include "samg.h"   
-AMG::AMG(std::string name)
+#include "samg.h"
+
+AMG::AMG(void)
 {
-	std::cout<<"Build class AMG for "<< name << std::endl;
+	std::cout<<"Build class AMG "<< std::endl;
 		
 }
 
-AMG::AMG(std::string name, gmm::csr_matrix<scalar_type> A_csr, 
-      std::vector <scalar_type> U, std::vector <scalar_type> F)
+AMG::AMG(gmm::csr_matrix<scalar_type> A_csr, std::vector <scalar_type> F)
 {
-    std::cout<<"Build class AMG for "<< name << std::endl;
+    std::cout<<"Build class AMG " << std::endl;
     gmm::copy(A_csr, A_csr_);
     gmm::resize(F_, F.size());
     gmm::copy(F, F_);
-    gmm::resize(U_, U.size());
-    gmm::copy(U, U_);
 }
 
 
 AMG::~AMG(void) {
 	// delete [] 
-	std::cout << "AMG deleted" << std::endl;
-		
+	std::cout << "AMG deleted" << std::endl;	
 }
 
 // Convert a csr matrix into SAMG format
@@ -33,6 +30,12 @@ void AMG::csr2samg(void)
 {
     std::cout << "Conversion to SAMG format" << std::endl;
     
+    // SAMG matrix format : the matrix is assumed to be stored in a CSR format in
+    // - a vector a_samg_ containing the entries row by row starting from the diag element (also if it is 0)
+    // - a vector ia_samg_ pointing to the first element of each row
+    // - a vector ja_samg_ pointing to the column index of the entries in a_samg
+
+    // Start from A_csr, A_csr_.ir, A_csr_.jc ...
     gmm::resize(a_samg_, A_csr_.pr.size()); gmm::clear(a_samg_);
     gmm::copy(A_csr_.pr, a_samg_);
     gmm::resize(ja_samg_, A_csr_.ir.size()); gmm::clear(ja_samg_);
@@ -40,23 +43,20 @@ void AMG::csr2samg(void)
     gmm::resize(ia_samg_, A_csr_.jc.size()); gmm::clear(ia_samg_);
     gmm::copy(A_csr_.jc, ia_samg_);
 
-
+    // ... and reorder them to obtain the SAMG format
     size_type nnu = ia_samg_.size()-1;
     for (size_type row=0; row < nnu; row ++)
     {   
         size_type first = ia_samg_[row];     // index of the first element of row
         size_type last = ia_samg_[row+1]-1;    // index of the last element of row
-        
  
         //check if row has a nonnull diag element
         bool has_diag_el = false;  
-        //TODO can I improve it with iterators? not to have so many for cycles
         size_type k=first;
         while (k<=last && ja_samg_[k] != row)
             k++;
         if (ja_samg_[k] == row)
-            has_diag_el=true;
-        
+            has_diag_el=true; // k stores the index of the nonnull diag element in a_samg        
         
         if(has_diag_el && k!= first)
         {   
@@ -64,10 +64,9 @@ void AMG::csr2samg(void)
             std::swap(a_samg_[k], a_samg_[first]);
             std::swap(ja_samg_[k], ja_samg_[first]);
         }
-        
- 
+         
         if(!has_diag_el){
-            //Add 0 diag element to the element vector in first position of row
+            //Add 0 diag element to a_samg_ in first position of row
             auto it1 = a_samg_.begin();
             a_samg_.insert(it1+first,0);
             //Add the column index (=row) of the diag element
@@ -80,8 +79,7 @@ void AMG::csr2samg(void)
 
     }// end for on the rows
     
-    //Covert to Fortran: indices start from 1...
-    //TODO can I improve it with iterators? not to have so many for cycles
+    // Covert to Fortran format for SAMG library: indices start from 1...
     for(int k=0; k<ia_samg_.size(); k++) ia_samg_[k] +=1; 
     for(int k=0; k<ja_samg_.size(); k++) ja_samg_[k] +=1;
 
@@ -92,23 +90,20 @@ void AMG::csr2samg(void)
 
 void AMG::solve(void)
 {
-  
+  // ==================================================================================
+  // Setting SAMG parameters
+    
     // ===> Set primary parameters. Others can be set by access functions as shown below.
 
-      APPL_INT    ndiu      = 1;        // dimension of (dummy) vector iu
+      int    ndiu      = 1;        // dimension of (dummy) vector iu
       //TODO Add case in which nsys !=1 and ndiu is not trivial
-      APPL_INT    ndip      = 1;        // dimension of (dummy) vector ip
+      int    ndip      = 1;        // dimension of (dummy) vector ip
 
-      APPL_INT    nsolve    = 2;        // results in scalar approach (current system is scalar)
-      APPL_INT    ifirst    = 1;        // first approximation = zero
+      int    nsolve    = 2;        // results in scalar approach (current system is scalar)
+      int    ifirst    = 1;        // first approximation = zero
       double eps       = 1.0e-8;   // required (relative) residual reduction
-      APPL_INT    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
-      // If we want to use Samg as a stand-alone solver (not as a preconditioner), both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0
- 				
-      //APPL_INT ncgrad_default=0;
-      //SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
-      //ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
-      
+      int    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
+     
    
       double a_cmplx   = 2.2;      // estimated dimensioning
       double g_cmplx   = 1.7;      // estimated dimensioning
@@ -117,34 +112,32 @@ void AMG::solve(void)
 
       double chktol    = -1.0;     // input checking de-activated (we know it's ok!)
       
-      //============================================
-      //     idump controls the matrix dumping of SAMG				
-      // 1  Standard prAPPL_INT output, no matrix dump. 
+      // idump controls the matrix dumping of SAMG				
+      // 1  Standard print output, no matrix dump. 
       // 2‐6  Write matrices to disk: level 2 up to level idmp. 
       // 7  Write matrices to disk: level 2 up to the coarsest level. 
       // 8  Write finest‐level matrix to disk (incl. right hand side etc.). 
       // 9  Write all matrices to disk.       
-      APPL_INT    idump     = 0;        // minimum output during setup
+      int    idump     = 0;        // minimum output during setup
 
 	  // iout page 44 Userguide. it controls display outpu. default 2 very verbose 43			
-      APPL_INT    iout      = 43;        // display residuals per iteration and work statistics
+      int    iout      = 43;        // display residuals per iteration and work statistics
       
-            
-      APPL_INT    n_default = 20;       // select default settings for secondary parameters
+      int    n_default = 20;       // select default settings for secondary parameters
                                    // CURRENTLY AVAILABLE: 10-13, 15-18, 20-23, 25-28
                                    // NOTE: the higher the respective SECOND digit, the
                                    // more aggressive the coarsening (--> lower memory at
                                    // the expense of slower convergence)
-      APPL_INT    iswtch    = 5100+n_default; // complete SAMG run ....
+
+      int    iswtch    = 5100+n_default; // complete SAMG run ....
                                    // ... memory de-allocation upon return ....
                                    // ... memory extension feature activated ....
                                    // ... residuals measured in the L2-norm .....
                                    // ... secondary parameter default setting # n_default
 
     // ===> Secondary parameters which have to be set if n_default=0
-    //      (at the same time a demonstration of how to access secondary or hidden parameters)
 
-      APPL_INT intin=0;
+      int intin=0;
       double dblin=0;
 
       if (n_default == 0) {
@@ -167,21 +160,21 @@ void AMG::solve(void)
 
     // input:
 
-    APPL_INT npnt,nsys,matrix,nnu,nna;
+    int npnt,nsys,matrix,nnu,nna;
 
-    APPL_INT * ia, * ja;
-    APPL_INT * iu, * ip, * iscale;
+    int * ia, * ja;
+    int * iu, * ip, * iscale;
 
     double * a, * u, * f;
 
     // output:
-    APPL_INT ierr,ierrl,ncyc_done;
+    int ierr,ierrl,ncyc_done;
     double res_out,res_in;
 
     nnu = ia_samg_.size() -1; // number of unknowns;
     nna = a_samg_.size(); // number of nnz entries
       
-    // APPL_INT matrix = XY where
+    // int matrix = XY where
     //   X = 1 if A is symmetric, full matrix stored (normal case)
     //     = 2 A is not symmetric.   
     //     = 3 A is symmetric, lower triangular part stored (s. Remark below!)
@@ -196,9 +189,9 @@ void AMG::solve(void)
         iu= new int[1];
     //TODO case nsys != 1 
     //else {
-    //    iu  = new APPL_INT[nnu];
+    //    iu  = new int[nnu];
     //    ndiu   = nnu;
-    //    for(APPL_INT iiu=0;iiu<nnu;iiu++){
+    //    for(int iiu=0;iiu<nnu;iiu++){
     //        //TODO only working for nsys = 2 check it out for larger systems
     //        if(iiu<dof_darcy.Pt())iu[iiu]=1;
     //        else iu[iiu]=2;
@@ -206,7 +199,6 @@ void AMG::solve(void)
     //    }
         
     ip = new int[1];
-   
     ia = new int[nnu+1];
     ja = new int[nna];
     a = new double[nna];
@@ -228,67 +220,14 @@ void AMG::solve(void)
     for (i=0;i<nnu;i++) f[i] = F_[i];
     
     // this vector (iscale) indicates which uknowns require scaling if 0 no scaling
-    iscale = new int[nsys]; for(APPL_INT i_sys=0; i_sys<nsys; i_sys++) iscale[i_sys]=0;  
+    iscale = new int[nsys]; for(int i_sys=0; i_sys<nsys; i_sys++) iscale[i_sys]=0;  
  
-    /*//****************************
-    //checking samg vectors...
-    std::ofstream s_var("samg_variables.txt");
-    s_var << " a_samg_ " ;
-    for (i=0; i < nna; i++) s_var << " " << a_samg_[i] ;
-    s_var << "\n";
-    s_var << " *a " ;
-    for (i=0; i < nna; i++) s_var << " " << a[i];
-    s_var << " \n " ;
-    
-    s_var << " ia_samg_ " ;
-    for (i=0; i < nnu+1; i++) s_var << " " << ia_samg_[i] ;
-    s_var << "\n";
-    s_var << " *ia " ;
-    for (i=0; i < nnu+1; i++) s_var << " " << ia[i];
-    s_var << " \n " ;
-    
-    s_var << " ja_samg_ " ;
-    for (i=0; i < nna; i++) s_var << " " << ja_samg_[i] ;
-    s_var << "\n";
-    s_var << " *ja " ;
-    for (i=0; i < nna; i++) s_var << " " << ja[i];
-    s_var << " \n " ;
-    
-    s_var << " F_ " ;
-    for (i=0; i < nnu; i++) s_var << " " << F_[i] ;
-    s_var << "\n";
-    s_var << " *f " ;
-    for (i=0; i < nnu; i++) s_var << " " << f[i];
-    s_var << " \n " ;
-    
-    s_var << " U_ " ;
-    for (i=0; i < nnu; i++) s_var << " " << U_[i] ;
-    s_var << "\n";
-    s_var << " *u " ;
-    for (i=0; i < nnu; i++) s_var << " " << u[i];
-    s_var << " \n " ;
-    s_var.close();
-    */ 
-    //***************************************
-
-// ===> if, e.g., the finest-level matrix shall be dumped:
-//
-//    char *string ="myfilename";
-//    APPL_INT length=10;
-//    SAMG_SET_FILNAM_DUMP(&string[0],&length,&length);
-//    idump=8;
-
-// ===> Call FORTRAN90 SAMG
-
-//    SAMG_RESET_SECONDARY();   // necessary before a second SAMG run
-	                        // if secondary parameters have to be reset
-	                        // see manual.
-  
-    //=============================================
+    // =====================================================================================
     // Choose the type of solver
 
+  
     // Use samg direct solver
-    APPL_INT levelx;
+    int levelx;
     SAMG_GET_LEVELX(&levelx); // retreive levelx=number of maximum coarsening levels 
         std::cout<<"..value of levelx======"<<levelx<<std::endl;
     levelx=1;
@@ -296,10 +235,10 @@ void AMG::solve(void)
     SAMG_GET_LEVELX(&levelx);// retreive levelx=number of maximum coarsening levels 
     std::cout<<"..check if change value of levelx======"<<levelx<<std::endl;
     
-    APPL_INT nrc=11;
-    APPL_INT  nrc_emergency=11;
-    APPL_INT nptmax=5000;
-    APPL_INT clsolver_finest=1;
+    int nrc=11;
+    int  nrc_emergency=11;
+    int nptmax=5000;
+    int clsolver_finest=1;
     SAMG_SET_NRC(&nrc);// change  nrc=solver for coarser levels page 67 user guide
     SAMG_SET_NRC_EMERGENCY(&nrc_emergency);
     SAMG_SET_NPTMAX(&nptmax);// change  nptmax
@@ -310,7 +249,7 @@ void AMG::solve(void)
     ////AMG stand alone
     ////Both ncgrad (the "nd number in ncyc) and ncgrad_default must be equal to 0 to use SAMG solver as a stand-alone solver (not as a preconditioner)
 
-    //APPL_INT ncgrad_default=0;
+    //int ncgrad_default=0;
     //SAMG_SET_NCGRAD_DEFAULT(&ncgrad_default);
     //ncyc      = 10050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
 
@@ -354,8 +293,7 @@ void AMG::solve(void)
             << ierr << " **** " << std::endl;
     }
     
-    //delete[] ia,ja,a,f,u,iu,ip,iscale;
-    
+   
     //save the solution
     gmm::resize(sol, nnu);
     for (int i=0; i<nnu ; i++)
@@ -372,7 +310,7 @@ void AMG::solve(void)
 //===============================================================
 
 /*
-void AMG::set_pt2uk(APPL_INT * dofpt , APPL_INT q_dof, APPL_INT l_dof, APPL_INT npts){
+void AMG::set_pt2uk(int * dofpt , int q_dof, int l_dof, int npts){
 	
 		std::std::cout << std::string(100, '=') << std::std::endl;
 		std::std::cout<< "AMG::set_pt2uk start"  << std::std::endl;
@@ -381,7 +319,7 @@ void AMG::set_pt2uk(APPL_INT * dofpt , APPL_INT q_dof, APPL_INT l_dof, APPL_INT 
 		
 		_q_dof=q_dof; _l_dof=l_dof; _npts=npts;
 		_pt2uk.resize(_q_dof + l_dof);
-		for (APPL_INT idof=0; idof< q_dof+l_dof; idof++)  _pt2uk[idof] = dofpt[idof] ;
+		for (int idof=0; idof< q_dof+l_dof; idof++)  _pt2uk[idof] = dofpt[idof] ;
 			
 				
 				std::std::cout << std::string(100, '=') << std::std::endl;
@@ -390,7 +328,7 @@ void AMG::set_pt2uk(APPL_INT * dofpt , APPL_INT q_dof, APPL_INT l_dof, APPL_INT 
 }
 */
 /*
-void AMG::set_dof(APPL_INT pt , APPL_INT ut, APPL_INT pv, APPL_INT uv){
+void AMG::set_dof(int pt , int ut, int pv, int uv){
 	_Pt=pt;_Ut=ut;_Pv=pv; _Uv=uv;
 }
 
