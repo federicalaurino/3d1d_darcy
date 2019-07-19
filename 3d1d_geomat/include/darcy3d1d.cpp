@@ -17,27 +17,9 @@
 
 #include <darcy3d1d.hpp>
 
-//#ifdef USE_SAMG
-
-//SAMG
-//#define CSC_INTERFACE 
-//#define SPARSE_INTERFACE
-//#define CSR_INTERFACE 
-// ------------------------------------
-// #define DIRECT_SOLVER 
-//#define AMG_STAND_ALONE
-//#define AMG_ACCELERATED
-
-
-//#include "samg.h"
-
-/* default 4 Byte integer types */
-//#ifndef APPL_INT
-//#define APPL_INT int
-//#endif
-/* end of integer.h */
-
-//#endif
+#if WITH_SAMG == 1
+	#include <AMG_Interface.hpp>
+#endif
 
 namespace getfem {
 
@@ -81,15 +63,7 @@ namespace getfem {
     {
 		mesht.clear();
         //TODO import 3d mesh 
-        /*
-		bool test = 0;
-		test = PARAM.int_value("TEST_GEOMETRY");
-		if(test==0){
-        #ifdef M3D1D_VERBOSE_
-                    cout << "Importing the 3D mesh for the tissue ...  "   << endl;
-        #endif
-			import_msh_file(descr.MESH_FILET, mesht);
-		}else{*/
+
         #ifdef M3D1D_VERBOSE_
 			cout << "Building the regular 3D mesh for the tissue ...  "   << endl;
         #endif
@@ -100,7 +74,6 @@ namespace getfem {
                 "NOISED=" + PARAM.string_value("NOISED_T")); 
         cout << "mesht description: " << st << endl;
             regular_mesh(mesht, st);
-		//}
         
         //TODO generate a mesh 1D
             
@@ -161,9 +134,6 @@ namespace getfem {
             cout << "Building parameters for tissue and vessel problems ..." << endl;
         #endif
         param_darcy.build(PARAM, mf_coeft, mf_coefv);
-        #ifdef M3D1D_VERBOSE_
-        //cout << param_darcy ;
-        #endif
     }
 
     
@@ -181,28 +151,23 @@ namespace getfem {
         vector<string> values = split(value_in, ' ');
         GMM_ASSERT1(labels.size()==2*DIMT, "wrong number of BC labels");
         GMM_ASSERT1(values.size()==2*DIMT, "wrong number of BC values");
-        for (unsigned f=0; f<2*DIMT; ++f) {
+
+        for (size_type f=0; f<2*DIMT; ++f) {
             BCt_darcy.emplace_back(labels[f], std::stof(values[f]), 0, f);
             #ifdef M3D1D_VERBOSE_
                 cout << "  face " << f << " : " << BCt_darcy.back() << endl;
             #endif
         } 
 
-        for (size_type bc=0; bc < BCt_darcy.size(); bc++)
-            cout<<BCt_darcy[bc]<<endl;
-
         // Build mesht regions
         mesh_region border_faces;
         outer_faces_of_mesh(mesht, border_faces);
 
         for (mr_visitor i(border_faces); !i.finished(); ++i) {
-
             assert(i.is_face());
-
             // Unit outward normal : used to identify faces
             base_node un = mesht.normal_of_face_of_convex(i.cv(), i.f());
             un /= gmm::vect_norm2(un);
-
             if (gmm::abs(un[0] + 1.0) < 1.0E-7)      // back
                 mesht.region(0).add(i.cv(), i.f());
             else if (gmm::abs(un[0] - 1.0) < 1.0E-7) // front
@@ -215,7 +180,6 @@ namespace getfem {
                 mesht.region(4).add(i.cv(), i.f());
             else if (gmm::abs(un[2] - 1.0) < 1.0E-7) // top
                 mesht.region(5).add(i.cv(), i.f());
-
         }
 
     }
@@ -286,9 +250,9 @@ namespace getfem {
             else if (meshv.convex_to_point(i0).size() > 1){ /* junction case */
                 
                 if (meshv.convex_to_point(i0).size() == 2){
-                #ifdef M3D1D_VERBOSE_
-                    std::cout << "trivial junction at i0 = " << i0 << std::endl;
-                #endif
+	                #ifdef M3D1D_VERBOSE_
+	                    std::cout << "trivial junction at i0 = " << i0 << std::endl;
+	                #endif
                 }
                 // Search for index of containing branch (\mathcal{P}^{in}_j)
                 size_type branch = 0; 
@@ -359,24 +323,7 @@ namespace getfem {
                     GMM_ASSERT1(contained == true, "No branch region contains node i1!");
                     BCv_darcy[bc].branches.emplace_back(branch); 
                 }
-                /*else { // interior -> Mixed point
-                // "MIX" label via post-processing
-                // Build a new region made by a single face
-                GMM_ASSERT1(meshv.has_region(fer)==0, 
-                "Overload in meshv region assembling!");
-                meshv.region(fer).add(cv, 0);
-                BCv_darcy.emplace_back("MIX", 0.0, i1, fer);
-                fer++;
-                // Store the containing branch index
-                size_type branch = 0; 
-                bool contained = false;
-                while (!contained && branch<nb_branches ) {
-                contained = meshv.region(branch).is_in(cv);
-                if (!contained) branch++;
-                }
-                GMM_ASSERT1(contained=true, "No branch region contains node i1!");
-                BCv_darcy.back().branches.emplace_back(branch); 
-                }*/
+
             }
             else if (meshv.convex_to_point(i1).size() > 1){ /* junction case */
                 
@@ -470,8 +417,7 @@ namespace getfem {
         darcy3d1d::assembly_bc();
         //2 Build the monolithic rhs FM_darcy
         //assembly_rhs();
-    } // end of assembly
-    
+    } 
         
     void darcy3d1d::assembly3d_darcy(void)
     {            
@@ -486,8 +432,6 @@ namespace getfem {
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt())));
     
-        gmm::MatrixMarket_IO::write("Dt.mm",Dt);
-
         gmm::clear(Dt); 
     }
     
@@ -502,8 +446,6 @@ namespace getfem {
         gmm::add(Dv, gmm::sub_matrix(AM_darcy,
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
-        
-        gmm::MatrixMarket_IO::write("Dv.mm",Dv);
         
         gmm::clear(Dv); 
     }
@@ -553,13 +495,6 @@ namespace getfem {
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()), 
                         gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
-        //***************************************
-        //checkig matrices
-        gmm::MatrixMarket_IO::write("Mbar.mm",Mbar);
-        gmm::MatrixMarket_IO::write("Bvv.mm",gmm::scaled(Bvv, 2.0/param_darcy.R(0)));
-        gmm::MatrixMarket_IO::write("Btt.mm",gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)));
-        gmm::MatrixMarket_IO::write("Btv.mm",gmm::scaled(Btv, -2.0*pi*param_darcy.R(0)));
-        gmm::MatrixMarket_IO::write("Bvt.mm",gmm::scaled(Bvt, 2.0/param_darcy.R(0)));
         
         // De-allocate memory
         gmm::clear(Mbar);  gmm::clear(Mlin);
@@ -587,7 +522,7 @@ namespace getfem {
         
         scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
         
-        darcy3d1d::asm_tissue_bc
+        asm_tissue_bc
         (Ft_temp, At_temp, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
         
         gmm::add(Ft_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
@@ -617,7 +552,8 @@ namespace getfem {
         scalar_type beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the vessels");
         
         darcy3d1d::asm_network_bc
-        (Fv_temp, Av_temp, mimv, mf_Pv, mf_coefv, BCv_darcy, beta_vessel, param_darcy.R());      
+        (Fv_temp, Av_temp, mimv, mf_Pv, mf_coefv, BCv_darcy, beta_vessel, param_darcy.R());  
+
         gmm::add(Fv_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
         gmm::add(Av_temp, gmm::sub_matrix(AM_darcy, 
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv()),
@@ -721,7 +657,8 @@ namespace getfem {
         }
 
     }
-    
+
+  #if WITH_SAMG == 1 
     bool darcy3d1d::solve_samg(void)
     {   
         
@@ -729,16 +666,15 @@ namespace getfem {
         
         gmm::csr_matrix <scalar_type> AM_csr;
         gmm::copy(AM_darcy, AM_csr);
-        /*AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
+        AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
         sys.csr2samg();
         sys.solve();
         //solution
         for(int i=0; i< dof_darcy.tot(); i++)
-            UM_darcy[i] = sys.getsol()[i];*/
-        
+            UM_darcy[i] = sys.getsol()[i];     
         return true;
     }
-    
+  #endif
     
     bool darcy3d1d::solve (void)
     {
@@ -747,7 +683,7 @@ namespace getfem {
         double time = gmm::uclock_sec();
 
         if ( descr_darcy.SOLVE_METHOD == "SuperLU" ) { 
-            // direct solver //
+            // direct solver 
             #ifdef M3D1D_VERBOSE_
                 cout << "  Applying the SuperLU method ... " << endl;
             #endif	
@@ -771,7 +707,6 @@ namespace getfem {
 			//gmm::clear(AM);
 			// See <http://download.gna.org/getfem/doc/gmmuser.pdf>, pag 15
 
-			double time_iter = gmm::uclock_sec();
 			if ( descr_darcy.SOLVE_METHOD == "CG" ) {
                 #ifdef M3D1D_VERBOSE_
                     cout << "  Applying the Conjugate Gradient method ... " << endl;
@@ -861,11 +796,13 @@ namespace getfem {
             
     }; // end of export
     
-    double U(const bgeot::base_node & x){ return 1.0-x[0];} //source
-    
+      
     void darcy3d1d::test ()
     {
-        //Solving just the 3D problem with a fixed line source(x)=x-1
+    	// Define the source on the 1D manifold
+    	auto U = [](const bgeot::base_node & x){ return 1.0-x[0];}; //source
+        
+        //Solving just the 3D problem with a fixed line source(x)=1-x
         
         //compute source
         std::vector <scalar_type> source (dof_darcy.Pv()); gmm::clear(source);
@@ -877,7 +814,7 @@ namespace getfem {
         gmm::resize(FM_darcy, dof_darcy.Pt()); gmm::clear(FM_darcy);
         
         // 3d darcy block
-        darcy3d1d::assembly3d_darcy();
+        assembly3d_darcy();
         // 3d1d block
         sparse_matrix_type Btt(dof_darcy.Pt(), dof_darcy.Pt());gmm::clear(Btt);
         sparse_matrix_type Btv(dof_darcy.Pt(), dof_darcy.Pv());gmm::clear(Btv);
@@ -893,19 +830,24 @@ namespace getfem {
         asm_exchange_mat(Btt, Btv, Bvt, Bvv,
                 mimv, mf_Pv, mf_coefv, param_darcy.kappa(), param_darcy.R(), Mbar);
         
-        gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
+        /*gmm::add(gmm::scaled(Btt, 2.0*pi*param_darcy.R(0)),			 
+                    gmm::sub_matrix(AM_darcy, 
+                        gmm::sub_interval(0, dof_darcy.Pt()), 
+                        gmm::sub_interval(0, dof_darcy.Pt())));*/ 
+        
+        gmm::add(Btt,			 
                     gmm::sub_matrix(AM_darcy, 
                         gmm::sub_interval(0, dof_darcy.Pt()), 
                         gmm::sub_interval(0, dof_darcy.Pt()))); 
         
-        gmm::mult(gmm::scaled(Btv, 2.0*pi*param_darcy.R(0)), source, FM_darcy);
+        gmm::mult(Btv, source, FM_darcy);
         
         // Add boundary conditions
         scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
-        darcy3d1d::asm_tissue_bc (FM_darcy, AM_darcy, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
+        asm_tissue_bc (FM_darcy, AM_darcy, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
         
         // Solve the problem
-        darcy3d1d::solve();
+        solve();
          
         // Export
         vtk_export exp_Pt(descr_darcy.OUTPUT+"Pt.vtk");

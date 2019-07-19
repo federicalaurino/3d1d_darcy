@@ -2,7 +2,7 @@
 #include "AMG_Interface.hpp" 
 #include <iostream>
 #include <fstream>
-//#include "samg.h"   
+#include "samg.h"   
 AMG::AMG(std::string name)
 {
 	std::cout<<"Build class AMG for "<< name << std::endl;
@@ -89,7 +89,7 @@ void AMG::csr2samg(void)
 }
 
 
-/**
+
 void AMG::solve(void)
 {
   
@@ -270,7 +270,7 @@ void AMG::solve(void)
     s_var.close();
     */ 
     //***************************************
-/**
+
 // ===> if, e.g., the finest-level matrix shall be dumped:
 //
 //    char *string ="myfilename";
@@ -365,7 +365,7 @@ void AMG::solve(void)
     
     return;
 }
-*/
+
 //===============================================================
 //===============================================================
 //===============================================================

@@ -40,7 +40,7 @@ std::vector <scalar_type> F_;
   // ======== generation af matrix
   void csr2samg(void);
     // ======== solver of the class ========================
-//  void solve(void);  
+  void solve(void);  
     // =========== return the solution ========================
   std::vector<scalar_type> getsol(){return sol;}
 };

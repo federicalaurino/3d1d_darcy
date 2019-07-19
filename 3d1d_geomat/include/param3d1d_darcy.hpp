@@ -46,25 +46,50 @@ struct param3d1d_darcy {
     
 	// Methods
 	void build ( ftool::md_param & fname, getfem::mesh_fem mf_coeft, getfem::mesh_fem mf_coefv ) 
-	{
-		FILE_ = fname;
+	{   
+        FILE_ = fname;
         mf_coeft_ = mf_coeft;
 		mf_coefv_ = mf_coefv;
         size_type dof_coeft = mf_coeft_.nb_dof();
         size_type dof_coefv = mf_coefv_.nb_dof();
         
-        // TODO adimensionalization
-        // TODO add the possibility to import R from file 
+        // Flag to import dimensionless param
+        bool IMPORT_DIMLESS = FILE_.int_value("IMPORT_DIMLESS");
+        bool IMPORT_RADIUS = FILE_.int_value("IMPORT_RADIUS");
 
-        scalar_type Rav_ = FILE_.real_value("RADIUS", "Vessel average radius");
-        R_.assign(dof_coefv, Rav_);
-        
+        if (IMPORT_RADIUS) {   /* case R' = const */
+            std::string RFILE = FILE_.string_value("RFILE"); 
+            cout << "  Importing radius values from file " << RFILE << " ..." << endl;
+            std::ifstream ist(RFILE);
+            if (!ist) cerr << "impossible to read from file " << RFILE << endl;
+            import_network_radius(R_, ist, mf_coefv_);
+        }
+        else{
+            scalar_type Rav_ = FILE_.real_value("RADIUS", "Vessel average radius");
+            if (IMPORT_DIMLESS)
+                R_.assign(dof_coefv, Rav_);
+            else{
+                scalar_type L = FILE_.real_value("L", "Characteristic length");
+                R_.assign(dof_coefv, Rav_/L);  
+                } 
+          }
+
         scalar_type Kp_const = FILE_.real_value("Kp", "Tissue permeability");
-        Kp_.assign(dof_coeft, Kp_const);
         scalar_type Kv_const = FILE_.real_value("Kv", "Vessel permeability");
-        Kv_.assign(dof_coefv, Kv_const);
         scalar_type kappa_const = FILE_.real_value("kappa", "Interface permeability");
-		kappa_.assign(dof_coefv, kappa_const);
+
+        if (IMPORT_DIMLESS){
+            Kp_.assign(dof_coeft, Kp_const);
+            Kv_.assign(dof_coefv, Kv_const);          
+    		kappa_.assign(dof_coefv, kappa_const);
+        }
+        else{
+            scalar_type L = FILE_.real_value("L", "Characteristic length");
+            scalar_type K = FILE_.real_value("K", "Reference permeability");
+            Kp_.assign(dof_coeft, Kp_const/K);
+            Kv_.assign(dof_coefv, Kv_const/K);          
+            kappa_.assign(dof_coefv, kappa_const * L/K);
+        }
 	}
 	
 	//! Get the radius at a given dof

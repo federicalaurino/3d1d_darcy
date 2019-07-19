@@ -22,7 +22,6 @@
 namespace getfem {
 
 // Aux function to compute the diameter of an element
- 
 scalar_type 
 estimate_h(const mesh & mesh, const size_type i) 
 {
@@ -38,8 +37,6 @@ estimate_h(const mesh & mesh, const size_type i)
 	return d;
 }
 
-
-    
 // Read an array of string split by a delim. 
 // Store the results in a pre-constructed vector
 std::vector<std::string> &
