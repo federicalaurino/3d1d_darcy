@@ -69,13 +69,36 @@ BEWARE: Recall to add the GetFEM library path to LD_LIBRARY_PATH. Example:
 
     $ export LD_LIBRARY_PATH=/home/...path/to.../getfem/lib
 
-Finally, modify the file config.mk as described in the README.md.
+======================
 
+### Before installation
+
+You must modify, in `config.mk`, the path to the GetFEM library
+``` 
+GETFEM_PREFIX=/home/.../path/to/.../getfem
+``` 
+In `config.mk`, you can also set the flags for optimized or debug installation, and for activating the comments at runtime:
+``` 
+DEBUG= no
+VERBOSE= yes
+``` 
+
+Finally, you need to export to LD_LIBRARY_PATH the paths to GetFEM, Boost and Qhull libraries;
+this can be done using the modules system (from a MOX computer) or setting manually the paths in the file configure.sh.
+Before compiling, call:
+``` 
+$ source configure.sh
+``` 
+
+BEWARE: configure.sh contains the details of SAMG LICENCE: if you do not have a SAMG LICENCE, you should use:
+``` 
+$ WITH_SAMG = 0
+```
 ======================
 
 ### Installation Build in each folder:
 
-In the `include/` folder to build the library
+In the `include/` folder to build the  (static) library "libproblem3d1d"
 ```
 $ make
 ``` 
@@ -83,8 +106,27 @@ In the `src/` folder to build the examples
 ```
 $ make 
 ```
-Remember to modify the config.mk file, following the instructions of the README.md files.
-This can be helpful if a new release of "libproblem3d1d" is available. See: https://github.com/lpossenti/MANworks_ht_curvature for the latest release.
+
+BEWARE: 
+If you want non-optimized program type:
+``` 
+$ make DEBUG=yes 
+``` 
+By default DEBUG=no.
+
+The following macro are defined and exported
+``` 
+CPPFLAGS=-I../../include -I$(GETFEM_PREFIX)/include
+
+CXXFLAGS=-std=c++11 
+
+OPTFLAGS=-O3 -DNDEBUG -march=native
+
+LDFLAGS=-L$(GETFEM_PREFIX)/lib
+
+LIBRARIES=-lgetfem
+```
+
 
 DEV ENVIRONMENT
 
@@ -97,6 +139,115 @@ GetFEM lib : 5.2
 Compiler : g++-5.2.1
 
 GetFEM lib : 5.2
+
+``### Before installation
+
+You must modify, in `config.mk`, the path to the GetFEM library
+``` 
+GETFEM_PREFIX=/home/.../path/to/.../getfem
+``` 
+In `config.mk`, you can also set the flags for optimized or debug installation, and for activating the comments at runtime:
+``` 
+DEBUG= no
+VERBOSE= yes
+``` 
+
+Finally, you need to export to LD_LIBRARY_PATH the paths to GetFEM, Boost and Qhull libraries;
+this can be done using the modules system (from a MOX computer) or setting manually the paths in the file configure.sh.
+Before compiling, call:
+``` 
+$ source configure.sh
+``` 
+
+BEWARE: configure.sh contains the details of SAMG LICENCE: if you do not have a SAMG LICENCE, you should use:
+``` 
+$ source configure_nosamg.sh
+``` 
+
+======================
+
+### Installation
+Build the whole project with:
+``` 
+$ make
+``` 
+It first build the (static) library "libproblem3d1d" by calling
+the Makefile in `include/`:
+``` 
+$ make -C include/
+``` 
+Then, it calls the inner makefiles provided for all examples.
+
+It is also possible to build a single example, e.g. "2_singlebranch", with:
+``` 
+$ make library
+
+$ make -C src/2_singlebranch
+``` 
+
+BEWARE: 
+If you want non-optimized program type:
+``` 
+$ make DEBUG=yes 
+``` 
+By defaul DEBUG=no.
+
+The following macro are defined and exported
+``` 
+CPPFLAGS=-I../../include -I$(GETFEM_PREFIX)/include
+
+CXXFLAGS=-std=c++11 -D=M3D1D_VERBOSE_
+
+OPTFLAGS=-O3 -DNDEBUG -march=native
+
+LDFLAGS=-L$(GETFEM_PREFIX)/lib
+
+LIBRARIES=-lgetfem
+``` 
+Recall that any macro may be overrlued by specifying it when calling 
+make. Example: 
+``` 
+$ make CXXFLAGS+=-DSOMETHING OPTFLAGS=-g
+``` 
+
+======================
+
+### Documentation (only implemented for Notaro's code)
+The documentation is produced by doxygen. The file Doxyfile contains 
+the common doxygen configuration for all examples.
+Build the code documentation with:
+``` 
+$ make pdf
+``` 
+It first fills doc/ with code documentation ($ make doc) and then compile
+the .tex files to produce a portable file ($ pdflatex doc/latex/refman.tex).
+You can visualize the documentation with
+``` 
+$ evince doc/latex/refman.pdf
+``` 
+
+## MAKE OPTIONS
+All examples are provided with a Makefile which accepts the following
+options:
+-  all       : makes the example
+-  clean     : as it says
+-  distclean : clean and also deletes temporary file and local doc directory
+Being "all" the first target of the makefile, to compile the examples is
+sufficient to type make. 
+In addition the external Makefile (./Makefile) has the following options:
+-  doc       : produces the documentation (html, tex)
+-  pdf       : produces a guide in portable format
+- library    : build the library from files in include/
+
+## RUN EXAMPLES
+To run a specific example, go to the related subdirectory
+``` 
+$ cd src/2_singlebranch
+``` 
+Build the program
+``` 
+$ make
+
 
 
 
