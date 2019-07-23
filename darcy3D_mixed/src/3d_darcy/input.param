@@ -27,7 +27,7 @@ OutputDirectory = './vtk/';
 %===================================
 % Flags to build a regular 3d mesh
 GT_T       = 'GT_PK(3,1)'; 
-NSUBDIV_T = '[5,5,5]';
+NSUBDIV_T = '[10,10,10]';
 ORG_T      = '[0,0,0]';
 SIZES_T    = '[1,1,1]';
 NOISED_T = '0';

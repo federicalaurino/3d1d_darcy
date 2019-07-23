@@ -1,3 +1,0 @@
-Nb. sub. 	 Nb. dof 	 Iter GMRES  	 Time [s]  
-[15,15,15]	62100	74	1571.78
- Residual 590.41

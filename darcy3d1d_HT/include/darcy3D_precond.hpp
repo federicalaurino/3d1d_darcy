@@ -16,6 +16,9 @@
     across the internal faces + a boundary term
 */
 
+#ifndef M3D1D_DARCY3D_PRECOND_HPP_
+#define M3D1D_DARCY3D_PRECOND_HPP_
+
 #include <gmm/gmm.h>
 #include <gmm/gmm_precond.h>
 #include <getfem/getfem_generic_assembly.h>
@@ -210,3 +213,5 @@ template <typename L1, typename L2, typename L3>
 
 }    
  // end of namespace gmm
+
+#endif

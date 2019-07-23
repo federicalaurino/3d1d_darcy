@@ -1,3 +1,0 @@
-Nb. sub. 	 Nb. dof 	  Time [s]  
-[25,25,25]	285000	869.536
- Residual 1260.9

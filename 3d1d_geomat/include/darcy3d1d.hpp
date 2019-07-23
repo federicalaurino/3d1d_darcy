@@ -26,8 +26,6 @@
 #include <descr3d1d_darcy.hpp>
 #include <param3d1d_darcy.hpp>
 
-
-#define M3D1D_VERBOSE_
  
 namespace getfem {
 

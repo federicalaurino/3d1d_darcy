@@ -9,6 +9,9 @@
   @brief  Interface to SAMG library 
  */
 
+#ifndef M3D1D_AMG_HPP_
+#define M3D1D_AMG_HPP_
+
 #include "gmm/gmm.h"
 #include "getfem/getfem_mesh.h"
 
@@ -42,4 +45,4 @@ public:
     std::vector<scalar_type> getsol(){return sol_;}
 };
 
-
+#endif

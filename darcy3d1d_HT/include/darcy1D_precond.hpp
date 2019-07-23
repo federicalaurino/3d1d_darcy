@@ -16,6 +16,9 @@
     across the internal faces + a boundary term
 */
 
+#ifndef M3D1D_DARCY1D_PRECOND_HPP_
+#define M3D1D_DARCY1D_PRECOND_HPP_
+
 #include <gmm/gmm.h>
 #include <gmm/gmm_precond.h>
 //#include <getfem/getfem_mesh.h>
@@ -127,3 +130,5 @@ template <typename MATRIX>
     };   
     
 }// end of namespace gmm
+
+#endif

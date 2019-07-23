@@ -5,10 +5,14 @@
     across the internal faces + a boundary term
 */
 
+#ifndef M3D1D_DARCY_PRECOND_HPP_
+#define M3D1D_DARCY_PRECOND_HPP_
+
+#include <defines.hpp>
 #include <gmm/gmm.h>
 #include <gmm/gmm_precond.h>
 #include <getfem/getfem_generic_assembly.h>
-#include <defines.hpp>
+#include <chrono>
 #if WITH_SAMG == 1
     #include <AMG_Interface.hpp>
 #endif   
@@ -68,8 +72,6 @@ template <typename Matrix> struct darcy_precond{
         wp.assembly(2);
 
         gmm::copy(wp.assembled_matrix(), schur);
-        gmm::csr_matrix <scalar_type> schur_csr;
-        gmm::copy(schur, schur_csr);  
         
     } // end of build with
     
@@ -101,7 +103,7 @@ void mult(const darcy_precond<Matrix> &P, const V1 &vec, V2 &res) {
               gmm::sub_vector(res, gmm::sub_interval(0, P.dof_u)));
     
     // multiplication of the Schur term
-    #ifdef WITH_AMG
+    #if (WITH_SAMG==1)
         // AMG solver
         gmm::csr_matrix <scalar_type> schur_csr;
         gmm::copy(P.schur, schur_csr);
@@ -154,3 +156,5 @@ template <typename L1, typename L2, typename L3>
 
 }    
  // end of namespace gmm
+
+#endif

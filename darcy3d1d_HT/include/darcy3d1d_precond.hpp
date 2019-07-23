@@ -16,6 +16,9 @@
     across the internal faces + a boundary term
 */
 
+#ifndef M3D1D_DARCY3D1D_PRECOND_HPP_
+#define M3D1D_DARCY3D1D_PRECOND_HPP_
+
 #include <darcy3D_precond.hpp>
 #include <darcy1D_precond.hpp>
     
@@ -105,3 +108,4 @@ void mult(const darcy3d1d_precond<Matrix> &P, const V1 &vec, V2 &res) {
     
 } // end mult
 
+#endif

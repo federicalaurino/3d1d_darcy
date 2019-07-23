@@ -135,7 +135,7 @@
         // 9  Write all matrices to disk.       
         int    idump     = -1;        // no output
         // iout page 44 Userguide. it controls display outpu. default 2 very verbose 43 (display residuals per iteration and work statistics)     
-        int    iout      = -1;        // no output (except warnings and errors)
+        int    iout      = 2;        // no output (except warnings and errors)
 
       // ===> Secondary parameters which have to be set if n_default=0
 
