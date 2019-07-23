@@ -1,20 +1,16 @@
 /* -*- c++ -*- (enableMbars emacs c++ mode) */
 /*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2016-2017
-                  
-                Copyright (C) 2016 Stefano Brambilla
+3d1d Darcy problem - IJGE
 ======================================================================*/
 /*! 
-  @file   transport3d1d.cpp
-  @author Stefano Brambilla <s.brambilla93@gmail.com>
-  @date   September 2016.
+  @file   AMG_Interface.cpp
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
   @brief  Definition of the aux class for the number of degrees of freedom.
  */
-#ifndef M3D1D_DOF3D1D_TRANSP_HPP_
-#define M3D1D_DOF3D1D_TRANSP_HPP_
+
+#ifndef M3D1D_DOF3D1D_HPP_
+#define M3D1D_DOF3D1D_HPP_
 
 namespace getfem {
 

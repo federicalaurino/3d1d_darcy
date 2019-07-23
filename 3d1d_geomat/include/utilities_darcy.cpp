@@ -1,11 +1,6 @@
 /* -*- c++ -*- (enables emacs c++ mode) */
 /*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2014-2015
-                  
-                Copyright (C) 2015 Domenico Notaro
+3d1d Darcy problem - IJGE
 ======================================================================*/
 /*! 
   @file   utilities.cpp
@@ -22,8 +17,7 @@
 namespace getfem {
 
 // Aux function to compute the diameter of an element
-scalar_type 
-estimate_h(const mesh & mesh, const size_type i) 
+scalar_type estimate_h(const mesh & mesh, const size_type i) 
 {
 	std::vector<size_type> cpt = mesh.ind_points_of_convex(i);
 	std::vector<size_type>::const_iterator icpt, jcpt;
@@ -39,8 +33,7 @@ estimate_h(const mesh & mesh, const size_type i)
 
 // Read an array of string split by a delim. 
 // Store the results in a pre-constructed vector
-std::vector<std::string> &
-split(const std::string & s, 
+std::vector <std::string> & split(const std::string & s, 
 	  char delim, 
 	  std::vector<std::string> & elems
 	  ) 
@@ -56,8 +49,7 @@ split(const std::string & s,
 
 // Read an array of string split by a delim. 
 // Return a new vector
-std::vector<std::string>
-split(const std::string & s, 
+std::vector<std::string> split(const std::string & s, 
 	  char delim
 	  ) 
 {

@@ -1,32 +1,24 @@
 /* -*- c++ -*- (enableMbars emacs c++ mode) */
 /*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2016-2017
-                  
-                Copyright (C) 2016 Stefano Brambilla
+3d1d Darcy problem - IJGE
 ======================================================================*/
 /*! 
-  @file   transport3d1d.cpp
-  @author Stefano Brambilla <s.brambilla93@gmail.com>
-  @date   September 2016.
+  @file   Adescr3d1d_darcy.cpp
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
   @brief  Definition of the aux class for algorithm description strings for transport problem.
  */
  
-/** @defgroup input User-defined parameters  */
 
-#ifndef M3D1D_DESCR3D1D_TRANSP_HPP_
-#define M3D1D_DESCR3D1D_TRANSP_HPP_
+#ifndef M3D1D_DESCR3D1D_HPP_
+#define M3D1D_DESCR3D1D_HPP_
 
 #include <string>
 
 namespace getfem {
 
 //! Class to import the descriptors of the coupled 3D/1D solver
-/*!
-	\ingroup input
- */
+
 struct descr3d1d_darcy {  
     
     //TODO: IMPORT MESH_FILET
@@ -51,8 +43,7 @@ struct descr3d1d_darcy {
 	std::string IM_TYPEV;
 	//! Output directory for transport problem
 	std::string OUTPUT;
-	/*//! Flag to make the problem stationary
-	size_type STATIONARY;*/
+
 	// Solver information
 	//! Identifief of the monolithic solver for transport problem
 	std::string SOLVE_METHOD;
@@ -85,7 +76,6 @@ struct descr3d1d_darcy {
 		}
 		NInt = size_type(FILE_.int_value("NInt", "Node numbers on the circle for the nonlocal term"));  
 		OUTPUT = FILE_.string_value("OUTPUT","Output Directory");
-		//STATIONARY = size_type(FILE_.int_value("STATIONARY", "Flag to make the problem stationary")); 
 	}
 
 	//! Overloading of the output operator

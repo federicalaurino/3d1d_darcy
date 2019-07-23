@@ -1,20 +1,22 @@
 /* -*- c++ -*- (enableMbars emacs c++ mode) */
 /*======================================================================
-  "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-  Course on Advanced Programming for Scientific Computing
-  Politecnico di Milano
-  A.Y. 2016-2017
-
-
-  Copyright (C) 2016 Stefano Brambilla
-  ======================================================================*/
+3d1d Darcy problem - IJGE
+======================================================================*/
 /*! 
   @file   darcy3d1d.cpp
-  @author Stefano Brambilla <s.brambilla93@gmail.com>
-  @date   September 2016.
-  @brief  Definition of the main class for the 3D/1D coupled transport problem.
-  */
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
+  @brief  Declaration of the main class for the 3D/1D coupled Darcy problem.
+ */
 
+// Getfem Libraries
+#include <getfem/getfem_regular_meshes.h>
+#include <getfem/getfem_assembling.h> 
+#include <getfem/getfem_export.h>
+// Standard libraries
+#include <iostream>
+#include <chrono>
+// Project headers
 #include <darcy3d1d.hpp>
 
 #if WITH_SAMG == 1
@@ -23,34 +25,34 @@
 
 namespace getfem {
 
-	void darcy3d1d::init (int argc, char *argv[]) 
-	{
+	void darcy3d1d::init (int argc, char *argv[]) {
+
 		std::cout << "initialize the darcy problem..."<<std::endl;
     	//1. Read the .param_darcy filename from standard input
         PARAM.read_command_line(argc, argv);
         //2. Import data (algorithm specifications, boundary conditions, ...)
         import_data();
-        //3. Import mesh for tissue (3D) and vessel network (1D)
+        //3. Import mesh for outer domain (3D) and inner domain (1D)
         build_mesh();
         //4. Set finite elements and integration methods
         set_im_and_fem();
         //5. Build problem parameters
         build_param();
-        //6. Build the list of tissue boundary data
-        build_tissue_boundary();
-        //7. Build the list of tissue boundary (and junction) data
-        build_vessel_boundary();
+        //6. Build the list of 3D boundary data
+        build_3d_boundary();
+        //7. Build the list of inner domain boundary (and junction) data
+        build_1d_boundary();
 	} // end of init
 
 
 	// Aux methods for init
 
 	//! Import algorithm specifications
-	void darcy3d1d::import_data (void)
-	{
+	void darcy3d1d::import_data () {
+
 		std::cout<<"init part 1: import data!......" <<std::endl;
         #ifdef M3D1D_VERBOSE_
-            cout << "Importing descriptors for tissue and vessel problems ..." << endl;
+            cout << "Importing descriptors for 3D and 1D problems ..." << endl;
         #endif
 		descr_darcy.import(PARAM);
         #ifdef M3D1D_VERBOSE_
@@ -58,27 +60,23 @@ namespace getfem {
         #endif
 	};
 
-	//! Import mesh for tissue (3D) and vessel (1D)  
-	void darcy3d1d::build_mesh (void)
-    {
-		mesht.clear();
-        //TODO import 3d mesh 
+	//! Import mesh for outer domain (3D) and inner domain (1D)  
+	void darcy3d1d::build_mesh () {
 
+		mesht.clear();
         #ifdef M3D1D_VERBOSE_
-			cout << "Building the regular 3D mesh for the tissue ...  "   << endl;
+			cout << "Building the regular 3D mesh for the outer domain ...  "   << endl;
         #endif
-        string st("GT='" + PARAM.string_value("GT_T") + "'; " +
+        std::string st("GT='" + PARAM.string_value("GT_T") + "'; " +
                 "NSUBDIV=" + PARAM.string_value("NSUBDIV_T") + "; " +  
                 "ORG=" + PARAM.string_value("ORG_T") + "; " +  
                 "SIZES=" + PARAM.string_value("SIZES_T") + "; " +  
                 "NOISED=" + PARAM.string_value("NOISED_T")); 
         cout << "mesht description: " << st << endl;
             regular_mesh(mesht, st);
-        
-        //TODO generate a mesh 1D
-            
+              
         #ifdef M3D1D_VERBOSE_
-            cout << "Importing the 1D mesh for the vessel (darcy problem)... "   << endl; 
+            cout << "Importing the 1D mesh for the inner domain... "   << endl; 
         #endif
 		std::ifstream ifs(descr_darcy.MESH_FILEV);
 		meshv.clear();
@@ -89,12 +87,12 @@ namespace getfem {
 	}
 	
     //! Set finite elements methods and integration methods 
-	void darcy3d1d::set_im_and_fem (void)
-	{
+	void darcy3d1d::set_im_and_fem () {
+
 		std::cout<<"init part 2: set fem methods!......" <<std::endl;
         
         #ifdef M3D1D_VERBOSE_
-            cout << "Setting IMs for tissue and vessel problems ..." << endl;
+            cout << "Setting IMs for 3D and 1D problems ..." << endl;
         #endif
         pintegration_method pim_t = int_method_descriptor(descr_darcy.IM_TYPET);
         pintegration_method pim_v = int_method_descriptor(descr_darcy.IM_TYPEV);
@@ -102,7 +100,7 @@ namespace getfem {
         mimv.set_integration_method(meshv.convex_index(), pim_v);
 
         #ifdef M3D1D_VERBOSE_
-            cout << "Setting FEMs for tissue and vessel problems ..." << endl;
+            cout << "Setting FEMs for 3D and 1D problems ..." << endl;
         #endif
         bgeot::pgeometric_trans pgt_t = bgeot::geometric_trans_descriptor(descr_darcy.MESH_TYPET);
         DIMT = pgt_t->dim();
@@ -116,7 +114,7 @@ namespace getfem {
 		mf_coefv.set_finite_element(meshv.convex_index(), pf_coefv);
 
         #ifdef M3D1D_VERBOSE_
-            cout << "Setting FEM dimensions for tissue and vessel problems ..." << endl;
+            cout << "Setting FEM dimensions for 3D and 1D problems ..." << endl;
         #endif
 		dof_darcy.set(mf_Pt, mf_Pv, mf_coeft, mf_coefv);
         #ifdef M3D1D_VERBOSE_
@@ -126,29 +124,29 @@ namespace getfem {
 
 
     //! Build problem parameters
-    void darcy3d1d::build_param (void)
-    {
+    void darcy3d1d::build_param () {
+
         std::cout<<"init part 3: build dimensionless parameters!" <<std::endl;
 
         #ifdef M3D1D_VERBOSE_
-            cout << "Building parameters for tissue and vessel problems ..." << endl;
+            cout << "Building parameters for 3D and 1D problems ..." << endl;
         #endif
         param_darcy.build(PARAM, mf_coeft, mf_coefv);
     }
 
     
-    void darcy3d1d::build_tissue_boundary (void) 
-    {
+    void darcy3d1d::build_3d_boundary () {
+
         #ifdef M3D1D_VERBOSE_
-            cout << "Building tissue boundary ..." << endl;
+            cout << "Building 3D boundary ..." << endl;
         #endif
         BCt_darcy.clear();
         BCt_darcy.reserve(2*DIMT);
         // Parse BC data
-        string label_in = PARAM.string_value("BClabel", "Array of tissue boundary labels");
-        string value_in = PARAM.string_value("BCvalue", "Array of tissue boundary values");
-        vector<string> labels = split(label_in, ' ');
-        vector<string> values = split(value_in, ' ');
+        std::string label_in = PARAM.string_value("BClabel", "Array of 3D boundary labels");
+        std::string value_in = PARAM.string_value("BCvalue", "Array of 3D boundary values");
+        std::vector <std::string> labels = split(label_in, ' ');
+        std::vector <std::string> values = split(value_in, ' ');
         GMM_ASSERT1(labels.size()==2*DIMT, "wrong number of BC labels");
         GMM_ASSERT1(values.size()==2*DIMT, "wrong number of BC values");
 
@@ -181,14 +179,13 @@ namespace getfem {
             else if (gmm::abs(un[2] - 1.0) < 1.0E-7) // top
                 mesht.region(5).add(i.cv(), i.f());
         }
-
     }
     
     
-	void darcy3d1d::build_vessel_boundary (void)
-    {
+	void darcy3d1d::build_1d_boundary () {
+
         #ifdef M3D1D_VERBOSE_
-            cout << "Building vessel boundary ..." << endl;
+            cout << "Building 1D boundary ..." << endl;
         #endif
 
         dal::bit_vector junctions; // global idx of junctions vertices in meshv
@@ -394,11 +391,11 @@ namespace getfem {
             
         #endif
 
-    } /* end of build_vessel_boundary */
+    } /* end of build_1d_boundary */
     
     
-    void darcy3d1d::assembly (void)
-    {
+    void darcy3d1d::assembly () {
+
         #ifdef M3D1D_VERBOSE_
             cout << "Allocating AM_darcy, UM_darcy, FM_darcy ..." << endl;
         #endif
@@ -419,8 +416,8 @@ namespace getfem {
         //assembly_rhs();
     } 
         
-    void darcy3d1d::assembly3d_darcy(void)
-    {            
+    void darcy3d1d::assembly3d_darcy () {
+
         // Assembling the 3d darcy (k_p grad, grad)
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 3d darcy (k_p grad, grad) " << endl;
@@ -435,8 +432,7 @@ namespace getfem {
         gmm::clear(Dt); 
     }
     
-    void darcy3d1d::assembly1d_darcy (void)
-    {
+    void darcy3d1d::assembly1d_darcy () {
         // Assembling the 1d darcy (k_v ds, ds)
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling the 1d darcy (k_v ds, ds) " << endl;
@@ -450,24 +446,24 @@ namespace getfem {
         gmm::clear(Dv); 
     }
     
-    void darcy3d1d::assembly3d1d_darcy (void)
-    {
+    void darcy3d1d::assembly3d1d_darcy () {
+
         // Assembling coupling terms
         #ifdef M3D1D_VERBOSE    
             cout << "Assembling coupling terms " << endl;
         #endif
-        // Tissue-to-tissue exchange matrix
+        // 3D-to-3D exchange matrix
         sparse_matrix_type Btt(dof_darcy.Pt(), dof_darcy.Pt());gmm::clear(Btt);
-        // Vessel-to-tissue exchange matrix
+        // 1D-to-3D exchange matrix
         sparse_matrix_type Btv(dof_darcy.Pt(), dof_darcy.Pv());gmm::clear(Btv);
-        // Tissue-to-vessel exchange matrix
+        // 3D-to-1D exchange matrix
         sparse_matrix_type Bvt(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Bvt);
-        // Vessel-to-vessel exchange matrix
+        // 1D-to-1D exchange matrix
         sparse_matrix_type Bvv(dof_darcy.Pv(), dof_darcy.Pv());gmm::clear(Bvv);
 
-        // Aux tissue-to-vessel averaging matrix
+        // Aux 3D-to-1D averaging matrix
         sparse_matrix_type Mbar(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mbar);
-        // Aux tissue-to-vessel interpolation matrix
+        // Aux 3D-to-1D interpolation matrix
         sparse_matrix_type Mlin(dof_darcy.Pv(), dof_darcy.Pt());gmm::clear(Mlin);
         
         asm_exchange_aux_mat(Mbar, Mlin, 
@@ -504,8 +500,8 @@ namespace getfem {
     }
     
     
-    void darcy3d1d::assembly_bc (void)
-    {   
+    void darcy3d1d::assembly_bc () {
+
         //Assembling BC for the 3d problem
         vector_type Ft_temp(dof_darcy.Pt()); gmm::clear(Ft_temp);
         gmm::copy(gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())), Ft_temp);
@@ -520,10 +516,10 @@ namespace getfem {
                                   gmm::sub_interval(0, dof_darcy.Pt())
                                  ));
         
-        scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
+        scalar_type beta_3d = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
         
-        asm_tissue_bc
-        (Ft_temp, At_temp, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
+        asm_bc_3d
+        (Ft_temp, At_temp, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_3d);
         
         gmm::add(Ft_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(0, dof_darcy.Pt())));
         gmm::add(At_temp, gmm::sub_matrix(AM_darcy, 
@@ -549,9 +545,9 @@ namespace getfem {
                                   gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())
                                  ));
         
-        scalar_type beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the vessels");
+        scalar_type beta_vessel = PARAM.real_value("BETA_V", "Coefficient for MIX condition in the 1D");
         
-        darcy3d1d::asm_network_bc
+        darcy3d1d::asm_bc_1d
         (Fv_temp, Av_temp, mimv, mf_Pv, mf_coefv, BCv_darcy, beta_vessel, param_darcy.R());  
 
         gmm::add(Fv_temp, gmm::sub_vector(FM_darcy, gmm::sub_interval(dof_darcy.Pt(), dof_darcy.Pv())));
@@ -566,13 +562,13 @@ namespace getfem {
     }
     
     template<typename MAT, typename VEC>
-    void darcy3d1d::asm_tissue_bc
+    void darcy3d1d::asm_bc_3d
         (VEC & F,
         MAT & M,
         const mesh_im & mim,
         const mesh_fem & mf_p,
         const mesh_fem & mf_data,
-        const std::vector<getfem::node> & BC,
+        const std::vector <getfem::node> & BC,
         const scalar_type beta
         )
     {
@@ -609,15 +605,15 @@ namespace getfem {
             }
         }
 
-    } /* end of asm_tissue_bc */
+    } /* end of asm_bc_3d */
     
     template<typename MAT, typename VEC>
-    void darcy3d1d::asm_network_bc
+    void darcy3d1d::asm_bc_1d
         (VEC & F, MAT & M, 
         const mesh_im & mim,
         const mesh_fem & mf_p,
         const mesh_fem & mf_data,
-        const std::vector<getfem::node> & BC,
+        const std::vector <getfem::node> & BC,
         const scalar_type beta,
         const VEC & R) 
     { 
@@ -629,7 +625,7 @@ namespace getfem {
             if (BC[bc].label=="DIR") { // Dirichlet BC
                 VEC BC_temp(mf_p.nb_dof(), BC[bc].value);
                 getfem::assembling_Dirichlet_condition(M, F, mf_p, BC[bc].rg, BC_temp);
-                //NOTE Everything works without penalty if we don't scale the vessel eq by pi*R^2
+                //NOTE Everything works without penalty if we don't scale the 1D eq by pi*R^2
                 double penalty =1.e+9;    
                 F[mf_p.basic_dof_on_region(BC[bc].rg).first()]= BC[bc].value*penalty;
                 M(mf_p.basic_dof_on_region(BC[bc].rg).first(),mf_p.basic_dof_on_region(BC[bc].rg).first())=penalty;
@@ -659,25 +655,37 @@ namespace getfem {
     }
 
   #if WITH_SAMG == 1 
-    bool darcy3d1d::solve_samg(void)
-    {   
+    bool darcy3d1d::solve_samg () {   
         cout << "Solving with samg.." << endl;
         
         gmm::csr_matrix <scalar_type> AM_csr;
         gmm::copy(AM_darcy, AM_csr);
-        //AMG sys("Sys_samg", AM_csr, UM_darcy, FM_darcy);
-        AMG sys(AM_csr, FM_darcy);
+        int solver = PARAM.int_value("SAMG_SOLVER", "Choose SAMG solver");
+        AMG sys(AM_csr, FM_darcy, solver);
         sys.csr2samg();
+        auto start = std::chrono::high_resolution_clock::now(); 
         sys.solve();
+        auto stop = std::chrono::high_resolution_clock::now(); 
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
         //solution
-        for(int i=0; i< dof_darcy.tot(); i++)
+        for(int i=0; i< FM_darcy.size(); i++)
             UM_darcy[i] = sys.getsol()[i];     
+
+        //Writing output
+        std::ofstream resume(descr_darcy.OUTPUT+"Resume.txt");
+        resume << "Nb. sub. \t Nb. dof \t Nb. nnz \t Time [s]  " << endl;
+        resume << PARAM.string_value("NSUBDIV_T") << "\t" \
+               << dof_darcy.Pt() << "\t"
+               << gmm::nnz(AM_darcy) << "\t"
+               << duration.count()/1E6 << endl;
+        resume.close();
+        
         return true;
+
     }
   #endif
     
-    bool darcy3d1d::solve (void)
-    {
+    bool darcy3d1d::solve () {
         std::cout << "solve darcy problem" << std::endl;
         
         double time = gmm::uclock_sec();
@@ -757,15 +765,15 @@ namespace getfem {
 	}; // end of solve
 
     
-    void darcy3d1d::export_vtk ()
-    {
+    void darcy3d1d::export_vtk () {
+
         #ifdef M3D1D_VERBOSE_
             cout << "Exporting the solution (vtk format) to " << descr_darcy.OUTPUT << " ..." << endl;
         #endif
 
         // Array of unknown dof of the interstitial pressure
         vector_type Pt(dof_darcy.Pt()); 
-        // Array of unknown dof of the vessel pressure
+        // Array of unknown dof of the 1D pressure
         vector_type Pv(dof_darcy.Pv()); 
 
         //Copy solution
@@ -796,11 +804,12 @@ namespace getfem {
             
     }; // end of export
     
-      
-    void darcy3d1d::test ()
-    {
-    	// Define the source on the 1D manifold
-    	auto U = [](const bgeot::base_node & x){ return 1.0-x[0];}; //source
+        
+             
+    void darcy3d1d::test () {
+        
+        // Define the source on the 1D manifold
+        auto  U = [] (const bgeot::base_node & x){ return 1.0-x[0];}; //source 
         
         //Solving just the 3D problem with a fixed line source(x)=1-x
         
@@ -844,10 +853,14 @@ namespace getfem {
         
         // Add boundary conditions
         scalar_type beta_tissue = PARAM.real_value("BETA_T", "Coefficient for MIX condition");
-        asm_tissue_bc (FM_darcy, AM_darcy, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
+        asm_bc_3d (FM_darcy, AM_darcy, mimt, mf_Pt, mf_coeft, BCt_darcy, beta_tissue);
         
         // Solve the problem
-        solve();
+        #if WITH_SAMG == 1 && defined(WITH_AMG)
+                solve_samg();
+        #else
+            solve();
+        #endif
          
         // Export
         vtk_export exp_Pt(descr_darcy.OUTPUT+"Pt.vtk");
