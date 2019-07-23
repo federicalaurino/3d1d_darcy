@@ -654,7 +654,7 @@ namespace getfem {
 
     }
 
-  #if WITH_SAMG == 1 
+  #if (WITH_SAMG == 1) 
     bool darcy3d1d::solve_samg () {   
         cout << "Solving with samg.." << endl;
         

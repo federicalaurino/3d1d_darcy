@@ -106,8 +106,8 @@
         int    ndip      = 1;        // dimension of (dummy) vector ip
         int    nsolve    = 2;        // results in scalar approach (current system is scalar)
         int    ifirst    = 1;        // first approximation = zero
-        double eps       = -1.0e-6;   // required (relative) residual reduction
-        int    ncyc      = 11050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
+        double eps       = -1.0e-8;   // required (relative) residual reduction
+        int    ncyc      = 12050;    // V-cycle as pre-conditioner for CG; at most 50 iterations
         double a_cmplx   = 2.2;      // estimated dimensioning
         double g_cmplx   = 1.7;      // estimated dimensioning
         double w_avrge   = 2.4;      // estimated dimensioning

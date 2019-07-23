@@ -11,7 +11,6 @@
  
 #ifndef M3D1D_DARCY3D1D_HPP_
 #define M3D1D_DARCY3D1D_HPP_
-//#define WITH_AMG
 
 // Getfem++ libraries   
 #include <getfem/getfem_mesh_fem.h>
@@ -48,7 +47,7 @@ namespace getfem {
 			//! Solve the problem
 			bool solve ();
 
-		#if WITH_SAMG == 1
+		#if (WITH_SAMG == 1)
 			bool solve_samg ();
 		#endif
 			//! Export the solution

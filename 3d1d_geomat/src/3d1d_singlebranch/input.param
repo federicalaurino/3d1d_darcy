@@ -29,7 +29,7 @@ OutputDirectory = './vtk/';
 %===================================
 % Flags to build a regular 3d mesh
 GT_T       = 'GT_PK(3,1)'; 
-NSUBDIV_T = '[20,20,20]';
+NSUBDIV_T = '[40,40,40]';
 ORG_T      = '[0,0,0]';
 SIZES_T    = '[1,1,1]';
 NOISED_T = '0';
@@ -64,7 +64,7 @@ RESIDUAL = 1E-16;
 NInt = 50;
 % If using SAMG : choose the SAMG solver ( = 0 direct, = 1 AMG stand alone,
 %	= 2 AMG accelerated)
-SAMG_SOLVER = 2;
+SAMG_SOLVER = 1;
 %===================================
 %  MODEL PARAMETERS
 %===================================
