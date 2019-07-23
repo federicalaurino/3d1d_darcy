@@ -1,7 +1,7 @@
-#A Getfem interface for SAMG library with applications
+# A Getfem interface for SAMG library with applications
 Politecnico di Milano (ITALY)
 
-Author : Federica Laurino
+### Author : Federica Laurino
 
 Mailto : federica.laurino@polimi.it
 
