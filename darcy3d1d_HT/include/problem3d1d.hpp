@@ -17,7 +17,7 @@
 #ifndef M3D1D_PROBLEM3D1D_HPP_
 #define M3D1D_PROBLEM3D1D_HPP_
 
-#define WITH_AMG
+//#define WITH_AMG
 
 // GetFem++ libraries
 #include <getfem/getfem_assembling.h> 
@@ -53,7 +53,6 @@
 #include <param3d1d.hpp>
 #include <c_mesh1d.hpp>
 #include <c_descr3d1d.hpp>
-//#include <defines.hpp>
 #include <time.h>
 #include <random>
 #include <math.h>
@@ -247,6 +246,8 @@ protected:
 	//! Compute Lymphatic Contribution
 	vector_type compute_lymphatics(vector_type);
 
+	//! Auxiliary method for solve
+	bool solve(sparse_matrix_type &M, vector_type &U, vector_type &F);
 
 }; /* end of class problem3d1d */
 

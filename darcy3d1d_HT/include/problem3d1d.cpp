@@ -13,43 +13,15 @@
   @date   January 2016.
   @brief  Definition of the main class for the 3D/1D coupled problem.
  */
-#include <problem3d1d.hpp>
-//#include <AMG_Interface.hpp>
-#include <cmath>
-//#include "darcy_preconditioner.hpp"
-// #include "darcy_preconditioner_vessel.hpp"
- //#include "darcy_preconditioner_mon.hpp"
- //#include "gmm/gmm_inoutput.h"
-// #include "darcy_preconditioner_mon_coup.hpp"
-// #include "darcy_preconditioner_tissue_coup.hpp"
-
 
 #include "gmm/gmm_dense_lu.h"
 #include "gmm/gmm_dense_Householder.h"
 #include "gmm/gmm_dense_qr.h"
-
+#include <cmath>
 #include <darcy3d1d_precond.hpp>
-//#define CSC_INTERFACE
-#define CSR_INTERFACE
-//#define SPARSE_INTERFACE
+#include <problem3d1d.hpp>
 
-//#define FIXP_GMRES // to comment in case of uncoupled system
-
-#if WITH_SAMG == 1
-	#include "samg.h"
-	#define DIRECT_SOLVER 
-	//#define AMG_STAND_ALONE
-	//#define AMG_ACCELERATED
-	#endif
-	/* default 4 Byte integer types */
-	#ifndef APPL_INT
-	#define APPL_INT int
-#endif
-
-#define M3D1D_VERBOSE_
-/* end of integer.h */
 namespace getfem {
-
 
 //! Parameteres for exact solution (1_uncoupled)
 /*! 
@@ -1040,46 +1012,46 @@ problem3d1d::assembly_tissue_test_rhs(void)
 
 }
 
-////////// Solve the problem ///////////////////////////////////////////    
-bool
-problem3d1d::solve(void)
+
+////////// Solve the problem ///////////////////////////////////////////   
+
+////////// Solve the problem ///////////////////////////////////////////   
+
+bool problem3d1d::solve(void) {
+
+	bool system_sol;
+	system_sol = problem3d1d::solve (AM, UM, FM);
+	return system_sol;
+
+}
+
+
+bool problem3d1d::solve(sparse_matrix_type &M, vector_type &U, vector_type &F)
 {
 	#ifdef M3D1D_VERBOSE_
 	cout << "Solving the monolithic system ... " << endl;
 	#endif
-	gmm::csc_matrix<scalar_type> A;
-	gmm::clean(AM, 1E-12);
-	gmm::copy(AM, A);
+	gmm::csc_matrix<scalar_type> M_csc;
+	gmm::clean(M, 1E-12);
+	gmm::copy(M, M_csc);
 
-	//gmm::clear(AM); // to be postponed for preconditioner
+
 	double time = gmm::uclock_sec();
-        const int dim_u_t = dof.Ut(),
-                  dim_matrix_t = dof.Ut() + dof.Pt();
-	const int dim_uv = dof.Uv(),
-                  dim_matrix_v = dof.Uv() + dof.Pv();
-       int  dim_matrix = dof.Ut() + dof.Pt() + dof.Uv() + dof.Pv();
+
 	if ( descr.SOLVE_METHOD == "SuperLU" ) { // direct solver //
 		#ifdef M3D1D_VERBOSE_ 
 		cout << "  Applying the SuperLU method ... " << endl;
 		#endif
 		scalar_type cond;
 
-	/*gmm::copy(gmm::sub_matrix(AM,
-			gmm::sub_interval(0 , dim_matrix),
-			gmm::sub_interval(0 , dim_matrix)), A_csr);*/
-
         double time2 = gmm::uclock_sec();
         std::cout << "------Solving the monolithic system using SuperLU" << std::endl;
-		gmm::SuperLU_solve(gmm::sub_matrix(A,
-			gmm::sub_interval(0 , dim_matrix),
-			gmm::sub_interval(0 , dim_matrix)), gmm::sub_vector(UM,gmm::sub_interval(0,dim_matrix)), gmm::sub_vector(FM,gmm::sub_interval(0,dim_matrix)), cond);
+		gmm::SuperLU_solve(gmm::sub_matrix(M,
+			gmm::sub_interval(0 , dof.tot()),
+			gmm::sub_interval(0 , dof.tot())), gmm::sub_vector(U,gmm::sub_interval(0,dof.tot())), gmm::sub_vector(F,gmm::sub_interval(0,dof.tot())), cond);
 
 		cout << "  Condition number : " << cond << endl;
 		cout << "----- ... time to solveLu : " << gmm::uclock_sec() - time2 << " seconds\n";
-	//	gmm::SuperLU_solve(gmm::sub_matrix(A,
-	//		gmm::sub_interval(dim_matrix , dim_matrix_v),
-	//		gmm::sub_interval(dim_matrix , dim_matrix_v)), gmm::sub_vector(UM,gmm::sub_interval(dim_matrix,dim_matrix_v)),
-	//		 gmm::sub_vector(FM,gmm::sub_interval(dim_matrix,dim_matrix_v)), cond);
 
 	}
 	else { // Iterative solver //
@@ -1089,46 +1061,44 @@ problem3d1d::solve(void)
 		iter.set_noisy(1);               // output of iterations (2: sub-iteration)
 		iter.set_maxiter(descr.MAXITER); // maximum number of iterations
 
-		// Preconditioners
-		//! \todo Add preconditioner choice to param file
-		// See \link http://download.gna.org/getfem/html/homepage/gmm/iter.html
 		gmm::identity_matrix PM; // no precond
-		//gmm::diagonal_precond<sparse_matrix_type> PM(AM); // diagonal preocond
-		//gmm::ilu_precond<sparse_matrix_type> PM(AM);
-		// ...
-		//gmm::clear(AM);
-		// See <http://download.gna.org/getfem/doc/gmmuser.pdf>, pag 15
-	
+
 		if ( descr.SOLVE_METHOD == "CG" ) {
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the Conjugate Gradient method ... " << endl;
 			#endif
 			gmm::identity_matrix PS;  // optional scalar product
-			gmm::cg(AM, UM, FM, PS, PM, iter);
+			gmm::cg(M, U, F, PS, PM, iter);
 		}
 		else if ( descr.SOLVE_METHOD == "BiCGstab" ) {
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the BiConjugate Gradient Stabilized method ... " << endl;
 			#endif
-			gmm::bicgstab(AM, UM, FM, PM, iter);
+			gmm::bicgstab(M, U, F, PM, iter);
 		}
 		else if ( descr.SOLVE_METHOD == "GMRES" ) {
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the Generalized Minimum Residual method ... " << endl;
 			#endif
-        
+
+			//bool PRECONDITONED = PARAM.int_value("PRECONDITIONED", "flag to use preconditioned GMRES");
+			
             // decoupled case --> classic GMRES
             if(gmm::vect_norm2(param.Q()) == 0){
             // CLASSIC GMRES, it can be used in case of uncoupled problem
                 std::cout << "Uncoupled problem: classic preconditioned gmres" << std::endl;
                 size_type restart = 50;
-                std::cout << "------------start building prec" << std::endl;
-                darcy3d1d_precond<sparse_matrix_type> P(AM, mf_Ut, mf_Pt, mimt, param.kt(), 
-                    mf_Uvi, mf_Pv, mimv);
-                std::cout << "------------end building prec" << std::endl;
-                
-                gmm::clear(UM);
-                gmm::gmres(AM, UM, FM, P, restart, iter);
+                if (PARAM.int_value("PRECONDITIONED")){
+                	darcy3d1d_precond<sparse_matrix_type> P(M, mf_Ut, mf_Pt, mimt, param.kt(), 
+                    mf_Uvi, mf_Pv, mimv);                
+                	gmm::clear(U);
+                	gmm::gmres(M, U, F, P, restart, iter);
+                }
+                else {
+                	gmm::clear(U);
+                	gmm::gmres(M, U, F, PM, restart, iter);	
+                }
+
                             
             }
             else{
@@ -1151,37 +1121,32 @@ problem3d1d::solve(void)
                 
                 // Extract the coupling matrices
                 sparse_matrix_type Qtv(dof.Pt(), dof.Pv()); gmm::clear(Qtv);
-                gmm::add(gmm::sub_matrix(AM,
+                gmm::add(gmm::sub_matrix(M,
                                 gmm::sub_interval(dof.Ut(), dof.Pt()),
                                             gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv())),
                             Qtv);
                 sparse_matrix_type Qvt(dof.Pv(), dof.Pt()); gmm::clear(Qvt);
-                gmm::add(gmm::sub_matrix(AM,
+                gmm::add(gmm::sub_matrix(M,
                                 gmm::sub_interval(dof.Ut() + dof.Pt() + dof.Uv(), dof.Pv()),
                                             gmm::sub_interval(dof.Ut(), dof.Pt())),
                             Qvt);
                 
                 // Extract tissue matrix
                 sparse_matrix_type Mt(dof.tissue(), dof.tissue()); gmm::clear(Mt);
-                gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(0, dof.tissue()), gmm::sub_interval(0, dof.tissue())),
+                gmm::copy(gmm::sub_matrix(M, gmm::sub_interval(0, dof.tissue()), gmm::sub_interval(0, dof.tissue())),
                     Mt);
                 sparse_matrix_type Mv(dof.vessel(), dof.vessel()); gmm::clear(Mv);
-                gmm::copy(gmm::sub_matrix(AM, gmm::sub_interval(dof.tissue(), dof.vessel()), gmm::sub_interval(dof.tissue(), dof.vessel())),
+                gmm::copy(gmm::sub_matrix(M, gmm::sub_interval(dof.tissue(), dof.vessel()), gmm::sub_interval(dof.tissue(), dof.vessel())),
                     Mv);
                 
                 
                 // compute the preconditioners for tissue and vessel problem
-                std::cout << "------------build the preconditiner for the tissue" << std::endl;
                 darcy3D_precond <sparse_matrix_type> P_t(Mt, 
                                 mf_Ut, mf_Pt, mimt, param.kt());
 
-                std::cout << "------------end build the preconditiner for the tissue" << std::endl;
-
-                std::cout << "------------build the preconditiner for the vessels" << std::endl;
                 darcy1D_precond <sparse_matrix_type> P_v(Mv, 
                                 mf_Uvi, mf_Pv, mimv);
-                std::cout << "------------end build the preconditiner for the vessels" << std::endl;
-                
+
                 scalar_type cond;
                 
                 //residual, tolerance and max iter for the fixed point
@@ -1196,15 +1161,16 @@ problem3d1d::solve(void)
                     
                     iter_fixp++;
                     gmm::clear(U_new);
-                    
+
                     std::cout << "----Fix point: iteration " << iter_fixp << std::endl;
+
                     
                     // -> Solve the vessel problem at iter k using Uold for the tissue.
                     //    At iter 1 Uold in the tissue is 0
                     
                     // modify the rhs for vessel
                     gmm::clear(rhs_fixp_v);
-                    gmm::copy(gmm::sub_vector(FM, gmm::sub_interval(dof.tissue(), dof.vessel())), rhs_fixp_v);
+                    gmm::copy(gmm::sub_vector(F, gmm::sub_interval(dof.tissue(), dof.vessel())), rhs_fixp_v);
                     gmm::mult_add(Qvt, 
                                   gmm::scaled(gmm::sub_vector(U_old, gmm::sub_interval(dof.Ut(), dof.Pt())), -1.0),
                                   gmm::sub_vector(rhs_fixp_v, gmm::sub_interval(dof.Uv(), dof.Pv())));
@@ -1216,7 +1182,10 @@ problem3d1d::solve(void)
                     // In alternative we can use gmres + P_v to solve also the vessel problem
                     gmm::clear(sol_v);
                     iter.set_iteration(0);
-                    gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
+                    if (PARAM.int_value("PRECONDITIONED")){
+                    	gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
+                    else 
+                    	gmm::gmres(Mv, sol_v, rhs_fixp_v, PM, restart, iter);
                     gmm::copy(sol_v, gmm::sub_vector(U_new, gmm::sub_interval(dof.tissue(), dof.vessel())));
                     
                     // -> Solve the tissue problem at iter k using Unew for the vessel.
@@ -1232,11 +1201,20 @@ problem3d1d::solve(void)
                     // Solve the preconditioned tissue problem at iter k 
                     gmm::clear(sol_t);
                     iter.set_iteration(0);
-                    gmm::gmres(Mt,    
-                                    sol_t,
-                                    rhs_fixp_t,
-                                    P_t, restart, iter);
-                    //gmm::SuperLU_solve(Mt, sol_t, rhs_fixp_t, cond);
+                    if(PARAM.int_value("PRECONDITIONED")){
+	                    gmm::gmres(Mt,    
+	                                    sol_t,
+	                                    rhs_fixp_t,
+	                                    P_t, restart, iter);
+	                    std::cout << "GMRES precond tissue..................." << std::endl;
+                    }
+                    else
+                    	{
+	                    gmm::gmres(Mt,    
+	                                    sol_t,
+	                                    rhs_fixp_t,
+	                                    PM, restart, iter);
+                    }
                     gmm::copy(sol_t, gmm::sub_vector(U_new, gmm::sub_interval(0, dof.tissue())));
                     
                     // Compute residual
@@ -1250,7 +1228,7 @@ problem3d1d::solve(void)
                     
                 } // end while cycle
                 
-                gmm::copy(U_new, UM);
+                gmm::copy(U_new, U);
                
             }
 		
@@ -1259,13 +1237,13 @@ problem3d1d::solve(void)
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the Quasi-Minimal Residual method ... " << endl;
 			#endif
-			gmm::qmr(AM, UM, FM, PM, iter);
+			gmm::qmr(M, U, F, PM, iter);
 		}
 		else if ( descr.SOLVE_METHOD == "LSCG" ) {
 			#ifdef M3D1D_VERBOSE_
 			cout << "  Applying the unpreconditionned Least Square CG method ... " << endl;
 			#endif
-			gmm::least_squares_cg(AM, UM, FM, iter);
+			gmm::least_squares_cg(M, U, F, iter);
 		}
 		// Check
 		if (iter.converged())
@@ -1276,152 +1254,8 @@ problem3d1d::solve(void)
 	}
 	cout << "... time to solve : " << gmm::uclock_sec() - time << " seconds\n";
 
-	#ifdef M3D1D_VERBOSE_
-	cout << "Compute the total flow rate ... " << endl;
-	#endif
-	// Aux vector
-	vector_type Uphi(dof.Pv()); 
-	// Extracting matrices Bvt, Bvv
-	sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
-	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
-	gmm::copy(gmm::sub_matrix(A, 
-			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv()	, dof.Pv()),
-			gmm::sub_interval(dof.Ut(), dof.Pt())),
-				Bvt); 
-	gmm::copy(gmm::sub_matrix(A, 
-			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()), 
-			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())),
-				Bvv); 
-	// Extracting solutions Pt, Pv 
-	vector_type Pt(dof.Pt()); 
-	vector_type Pv(dof.Pv()); 
-	gmm::copy(gmm::sub_vector(UM, 
-		gmm::sub_interval(dof.Ut(), dof.Pt())), Pt);
-	gmm::copy(gmm::sub_vector(UM, 
-		gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())), Pv);
-	// Computing Bvv*Pv - Bvt*Pt
-	gmm::mult(Bvt, Pt, Uphi);
-	gmm::mult_add(Bvv, Pv, Uphi);
-        //oncotic term
-	scalar_type Pi_t=param.pi_t();
-	scalar_type Pi_v=param.pi_v();
-	scalar_type sigma=param.sigma();
-	scalar_type picoef=sigma*(Pi_v-Pi_t);
-        vector_type DeltaPi(dof.Pv(),picoef);
-        gmm::scale(DeltaPi,-1);
-        gmm::mult_add(Bvv, DeltaPi, Uphi);
-	TFR = std::accumulate(Uphi.begin(), Uphi.end(), 0.0);
-
-        //computing flowrate from the cube
-        // Aux vector
-        vector_type Uphi2(dof.Pt());
-        vector_type Pl(dof.Pt(),PARAM.real_value("PL"));
-        vector_type Pl_aux(dof.Pt());
-        sparse_matrix_type Mlf (dof.Pt(), dof.Pt());
-        scalar_type lf_coef=param.Q_LF(0);//scalar then uniform untill now
-        asm_tissue_lymph_sink(Mlf, mimt, mf_Pt);
-        gmm::scale(Mlf,lf_coef);
-        gmm::mult(Mlf,Pl,Pl_aux);
-        gmm::scale(Pl_aux,-1);
-        gmm::mult(Mlf,Pt,Uphi2);
-        gmm::add(Uphi2,Pl_aux,Uphi2);
-        //computing flowrate of lymphatic system
-	FRlymph = std::accumulate(Uphi2.begin(), Uphi2.end(), 0.0);
-        //computing flowrate from the cube
-        FRCube = TFR - FRlymph;
-
-	// De-allocate memory
-	gmm::clear(Bvt); gmm::clear(Bvv);
-	gmm::clear(Pt);  gmm::clear(Pv);  
-        gmm::clear(Uphi); gmm::clear(Uphi2);
-        gmm:: clear(Mlf); gmm::clear(Pl); gmm::clear(Pl_aux);
-        gmm::clear(DeltaPi);
 	return true;
 }
-
-
-/*	bool problem3d1d::solve_samg (void)
-	{
-#ifdef WITH_SAMG	
-#ifdef M3D1D_VERBOSE_
-		cout << "Solving the monolithic system ... " << endl;
-#endif
-
-
-
-//////////////////////////////////////AMG INTERFACE
-std::cout<<"converting A"<<std::endl;
-gmm::csr_matrix<scalar_type> A_csr;
-gmm::clean(AM, 1E-12);
-// gmm::copy(AM, A_csr);
-// std::cout<<"converting X"<<std::endl;
-// std::vector<scalar_type> X,  B;
-// gmm::resize(X,dof.tot()); gmm::clean(X, 1E-12);
-// gmm::copy(UM,X);
-// std::cout<<"converting B"<<std::endl;
-// gmm::resize(B,dof.tot());gmm::clean(B, 1E-12);
-// gmm::copy(FM,B);
-
-
-
-int dim_matrix=dof.Ut()+dof.Pt()+dof.Uv()+dof.Pv();
-gmm::copy(gmm::sub_matrix(AM,
-			gmm::sub_interval(0 , dim_matrix),
-			gmm::sub_interval(0 , dim_matrix)), A_csr);
-std::cout<<"converting X"<<std::endl;
-std::vector<scalar_type> X,  B;
-// gmm::resize(X,dof.tot()); gmm::clean(X, 1E-12);
-// gmm::copy(UM,X);
-
-gmm::resize(X,dim_matrix); gmm::clean(X, 1E-12);
-gmm::copy(gmm::sub_vector(UM,gmm::sub_interval(0,dim_matrix)),X);
-
-std::cout<<"converting B"<<std::endl;
-gmm::resize(B,dim_matrix);gmm::clean(B, 1E-12);
-// gmm::resize(B,dof.tot());gmm::clean(B, 1E-12);
-//gmm::copy(FM,B);
-gmm::copy(gmm::sub_vector(FM,gmm::sub_interval(0,dim_matrix)),B);
-
-
-
-AMG amg("3d1d");
-// amg.set_pt2uk(dofpt , nbdofu, nbdofp, pt_counter);
-amg.set_dof(dof.Pt(), dof.Ut(), dof.Pv(), dof.Uv());
-std::cout<< "init solve "<< std::endl;
-
-// non dobbiamo passare A_c
- amg.convert_matrix(A_csr);
- amg.solve(A_csr, X , B , 1);
-gmm::copy(amg.getsol(),gmm::sub_vector(UM,gmm::sub_interval(0,dim_matrix)));
-
-
-
-#ifdef SPARSE_INTERFACE
-				for(int i = 0 ; i < nrows ; i++ ){U_1[i]=u[i];
-					UM[i]=u[i];	
-				}
-				gmm::copy(U_1, UM);
-#endif
-#ifdef CSC_INTERFACE
-				for(int i = 0 ; i < nnu ; i++ ){
-					U_2[i]=u_samg[i];UM_transp[i]=u_samg[i];}
-				gmm::copy(U_2,UM);
-#endif
-				
-#ifdef CSR_INTERFACE
-				// for(int i = 0 ; i < nnu ; i++ ){
-				//	U_2[i]=u_samg[i];UM[i]=u_samg[i];}
-				 // gmm::copy(U_2,UM);
-#endif
-	
-export_vtk();
-#else // with samg
-std::cout<< "Error you are trying to solve with samg calling solve_samg"<<std::endl;
-#endif
-			return true;
-			}; // end of solve_samg
-
-*/
 
 vector_type
 problem3d1d::compute_lymphatics(vector_type U_O)
@@ -1468,201 +1302,13 @@ vector_type
 problem3d1d::iteration_solve(vector_type U_O,vector_type F_N){
 	
 	scalar_type alfa=descr.under;
-	gmm::csc_matrix<scalar_type> A;
-	gmm::clean(AM, 1E-12);
-	gmm::copy(AM, A);
 	scalar_type cond;
 	vector_type U_new;
+	gmm::clean(AM, 1E-12);
 	gmm::resize(U_new, dof.tot()); gmm::clear(U_new);
 
-	//--------------------------------------	 A, U_new, F_N, cond
-	
-	if ( descr.SOLVE_METHOD == "GMRES" ) {
-	  // Iterative solver //
-		gmm::iteration iter(descr.RES);  // iteration object with the max residu
-		iter.set_noisy(1);               // output of iterations (2: sub-iteration)
-		iter.set_maxiter(descr.MAXITER); // maximum number of iterations
-
-		
-		gmm::identity_matrix PM; // no precond
-		#ifdef M3D1D_VERBOSE_
-		cout << "  Applying the Generalized Minimum Residual method to iter_solve... " << endl;
-		#endif
-		
-		vector_type U_new_gm; 
-	        vector_type U_old_gm;
-		vector_type res_U; 
-                gmm::resize(U_new_gm, dof.tot()); gmm::clear(U_new_gm);
-	        gmm::resize(U_old_gm, dof.tot()); gmm::clear(U_old_gm);
-		gmm::resize(res_U, dof.tot()); gmm::clear(res_U);
-	        vector_type F_new_gm;
-	        gmm::resize(F_new_gm, dof.tot()); gmm::clear(F_new_gm);
-                vector_type F_mod;
-                size_type restart = 50;
-                int max_iter=6;
-		int iter_fixp=0;
-                vector_type RES_SOL(max_iter);
-                scalar_type epsSol=1E-8; //descr.epsSol;
-	        scalar_type resSol; //epsSol*100;
-                gmm::iteration iter_gm(descr.RES);  // iteration object with the max residu
-                bool RK=1;
-                
-		gmm::copy(U_new_gm,U_old_gm);gmm::copy(F_N,F_new_gm);
-		
-                        //Extracting matrix
-                gmm::csr_matrix<double> Mtt;  gmm::csr_matrix<double> Btt;
-                gmm::csr_matrix<double> Qvt;  gmm::csr_matrix<double> Qtv;
-		gmm::csr_matrix<double> Mvv;
-			//cout << " starting copying" << endl;
-                        // mass matrix tissue
-                gmm::copy(gmm::sub_matrix(A, gmm::sub_interval(0 , dof.Ut()),
-                                              gmm::sub_interval(0 , dof.Ut())), Mtt); 
-
-                        // coupling tissue
-                gmm::copy(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut(), dof.Pt()),
-                                              gmm::sub_interval(dof.Ut(), dof.Pt())), Btt); 
-
-                gmm::copy(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv()),
-                                              gmm::sub_interval(dof.Ut(), dof.Pt())), Qvt); 
-                gmm::copy(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut(), dof.Pt()),
-			                      gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())), Qtv); 	
-                gmm::copy(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()),
-			                      gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv())), Mvv); 	
-					      
-		#ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- starting fix point" << endl;
-
-                cout << " starting preconditioning" << endl;
-	        #endif
-            // darcy_precond< gmm::csr_matrix<double>> precond(Mtt, mf_Pt, mimt);
-             //darcy_precond_vessel< gmm::csr_matrix<double>> precond_vessel(Mvv, mf_Pv, mimv); // to decomment for vessel preconditioning
-	        gmm::iteration iterv_gm(descr.RES);
-	 
-	 
-	 // print matrix 
-        //cout << " starting printing matrix ..........!!!!!!!!!!!!!!!!!! ............" << endl;
-	//gmm::MatrixMarket_IO::write("matrix", AM); 	
-		
-        while(RK &&  iter_fixp < max_iter)
-	        {	
-// -> vessel solution
-               // modified rhs +Bvt*pt^k-1
-	        
-		iter_gm.set_iteration(0);
-		#ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- begin of while" << iter_gm.get_iteration() << " iterations." << endl;
-		#endif
-                gmm::resize(F_mod, dof.Pv());
-                gmm::mult(Qvt,gmm::sub_vector(U_old_gm,gmm::sub_interval(dof.Ut(),dof.Pt())),F_mod);
-                gmm::add(gmm::scaled(F_mod,-1),gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())));
-                scalar_type cond;
-		#ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- starting SuperLU vessel" << endl;
-		#endif
-		
-			
-		double time3 = gmm::uclock_sec();
-                 gmm::SuperLU_solve(gmm::sub_matrix(A, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()),
-                                         gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()))  , 
-                                    gmm::sub_vector(U_new_gm, 
-                                            gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())),
-                                    gmm::sub_vector(F_new_gm, 
-                                            gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())), cond);
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- time to solveSuperLu vessel::gmm: " << gmm::uclock_sec() - time3 << " seconds\n";
-                #endif
-		// to decomment for use gmres in the vessel problem
-/*               vector_type Uv_new; 
-		gmm::resize(Uv_new,dof.Uv()+dof.Pv()); gmm::clear(Uv_new);
-		gmm::copy(gmm::sub_vector(U_new,gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())),Uv_new);
-		iterv.set_iteration(0);
-		double time3 = gmm::uclock_sec();
-               gmm::gmres(
-		           gmm::sub_matrix(AM, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv()),
-                                      gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())),
-			   Uv_new,
-			   gmm::sub_vector(F_new, gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())),
-			   precond_vessel,
-			   restart,iterv);
-	       cout << "-----ZZZZZ ----- ... time to solveGmres vessel::gmm: " << gmm::uclock_sec() - time3 << " seconds\n";
-               gmm::copy(Uv_new , gmm::sub_vector(U_new,gmm::sub_interval(dof.Ut()+dof.Pt(),dof.Uv()+dof.Pv())));
-	       cout << "  .ZZZZZ .. vessel .. converged in " << iterv.get_iteration() << " iterations." << endl;*/ 
-	    
-	    
-	    // -> tissue soluition 
-               // building the preconditioner 
-
-               // GMRES 
-	       gmm::clear(F_mod);
-               gmm::resize(F_mod, dof.Pt());
-               gmm::mult(Qtv,gmm::sub_vector(U_new_gm,gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(),dof.Pv())),F_mod);
-               gmm::add(gmm::scaled(F_mod,-1) , gmm::sub_vector(F_new_gm,gmm::sub_interval(dof.Ut(),dof.Pt())));
-               
- 
-	       
-	       //cout << " copying vectors" << endl;
-                 
-               
-
-			    
-		vector_type Ut_new_gm; 
-		gmm::resize(Ut_new_gm, dof.Ut()+dof.Pt()); gmm::clear(Ut_new_gm);
-		gmm::copy(gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ut_new_gm);	    
-		vector_type Ft_gm;     
-		gmm::resize(Ft_gm, dof.Ut()+dof.Pt()); gmm::clear(Ft_gm);
-		gmm::copy(gmm::sub_vector(F_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())),Ft_gm);
-// WARNING DO NOT PASS AS INTERVAL THE VECTORS
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- starting gmres tissue" << endl;
-		#endif
-		//gmm::iteration iter(descr.RES); 
-		double time4 = gmm::uclock_sec();
-		gmm::gmres(
-		           gmm::sub_matrix(A, 
-					   gmm::sub_interval(0,dof.Ut()+dof.Pt()),
-					   gmm::sub_interval(0,dof.Ut()+dof.Pt())) ,
-			   Ut_new_gm,
-			   Ft_gm,
-			  PM, // precond
-			   restart,iter_gm);
-		
-			   
-                //gmm::SuperLU_solve(gmm::sub_matrix(AM, 
- 		//      	     gmm::sub_interval(0,dof.Ut()+dof.Pt()),
- 	        // 		     gmm::sub_interval(0,dof.Ut()+dof.Pt())) ,
- 	        //		     Ut_new,
- 	        //		     Ft, cond);
-	        #ifdef M3D1D_VERBOSE_
-		cout << "-----ZZZZZ ----- ... time to solveGmres tissue::gmm: " << gmm::uclock_sec() - time4 << " seconds\n";	   
-		#endif	   
-			   
-			   
-		gmm::copy(Ut_new_gm, gmm::sub_vector(U_new_gm,gmm::sub_interval(0,dof.Ut()+dof.Pt())));
-			    
-                #ifdef M3D1D_VERBOSE_
-                cout << "-----ZZZZZ ----- ... iteration to solve fix point::gmm: " << iter_fixp+1 <<"\n";
-                #endif
-                //Solution residual
-		gmm::add(U_new_gm,gmm::scaled(U_old_gm,-1),res_U); 
-		resSol=gmm::vect_norm2(res_U)/(gmm::vect_norm2(U_old_gm)+1e-18);
-                RK = resSol >  epsSol;
-                iter_fixp++;
-
-                gmm::copy(U_new_gm,U_old_gm);
-                gmm::copy(F_N, F_new_gm);
-                #ifdef M3D1D_VERBOSE_
-                cout << "  .ZZZZZ .. tissue gmres converged in " << iter_gm.get_iteration() << " iterations." << endl; 		
-                #endif
-		}
-
-                gmm::copy(U_old_gm,U_new);
-	}
-	else if ( descr.SOLVE_METHOD == "SuperLU" ) 	//Solving with SuperLU method
- 	gmm::SuperLU_solve(A, U_new, F_N, cond);
- 	
-	//--------------------------------------
-	
-	//cout << "Old Pt is " << gmm::sub_vector(U_O, gmm::sub_interval(dof.Ut(), dof.Pt())) << endl;
+	bool solve_res;
+	solve_res = solve(AM, U_new, F_N);
 
 	//UNDER-RELAXATION
 	if(alfa!=1){
@@ -1744,10 +1390,7 @@ problem3d1d::calcolo_Rk(vector_type U_N, vector_type U_O){
 	N_Pv=gmm::vect_norm2(Pv_old);
 	N_Uv=gmm::vect_norm2(Uv_old);
 	
-	/*cout << " Pt Residual = " << R_Pt/N_Pt << endl;
-	cout << " Ut Residual = " << R_Ut/N_Ut << endl;
-	cout << " Pv Residual = " << R_Pv/N_Pv << endl;
-	cout << " Uv Residual = " << R_Uv/N_Uv << endl;*/
+
 	residual=R_Pt/N_Pt+R_Ut/N_Ut+R_Pv/N_Pv+R_Uv/N_Uv;
 
 

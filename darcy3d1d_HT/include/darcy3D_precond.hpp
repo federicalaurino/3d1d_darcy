@@ -1,3 +1,14 @@
+/* -*- c++ -*- (enableMbars emacs c++ mode) */
+/*======================================================================
+3d1d - HT
+======================================================================*/
+/*! 
+  @file   darcy3D_precond.hpp
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
+  @brief  Class for darcy preconditioner for the 3D darcy problem: 
+ */
+
 /*  Class for darcy preconditioner for the 3D darcy problem:
     P = [diag^-1 0 ; 0 schur^-1]
     where diag is the diagonal of the velocity mass matrix and 
@@ -7,12 +18,11 @@
 
 #include <gmm/gmm.h>
 #include <gmm/gmm_precond.h>
-//#include <getfem/getfem_mesh.h>
 #include <getfem/getfem_generic_assembly.h>
 #include <defines.hpp>
 
-#ifdef WITH_AMG 
-#include <AMG_Interface.hpp>
+#if (WITH_SAMG==1) 
+	#include <AMG_Interface.hpp>
 #endif
 
 template <typename Matrix> struct darcy3D_precond{
@@ -148,20 +158,15 @@ void mult(const darcy3D_precond<Matrix> &P, const V1 &vec, V2 &res) {
               gmm::sub_vector(res, gmm::sub_interval(0, P.dof_u)));
     
     // multiplication of the Schur term
- #ifdef WITH_AMG
+ #if (WITH_SAMG==1)
     // AMG solver
         gmm::csr_matrix <scalar_type> schur_csr;
         gmm::copy(P.schur, schur_csr);
         std::vector <double> rhs; gmm::resize(rhs, P.dof_p);
         gmm::copy(gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), rhs);
-        std::vector <double> sol;  gmm::resize(sol, P.dof_p);
-        std::cout << "------------------In mult prec_t: Solving with SAMG" << std::endl;
-        AMG sys("Sys_samg", schur_csr, 
-            sol, 
-            rhs);
+        AMG sys(schur_csr, rhs, 1);
         sys.csr2samg();
         sys.solve();
-        std::cout << "------------------In mult prec_t: End Solving with SAMG" << std::endl;
         //solution
         for(int i=0; i< P.dof_p; i++)
             res[P.dof_u + i] = sys.getsol()[i];
@@ -169,12 +174,10 @@ void mult(const darcy3D_precond<Matrix> &P, const V1 &vec, V2 &res) {
     #else
         double cond;
         // Direct solver
-        std::cout << "------------------In mult prec_t: Solving with SuperLu" << std::endl;
         gmm::SuperLU_solve(P.schur, 
                            gmm::sub_vector(res, gmm::sub_interval(P.dof_u, P.dof_p)), 
                            gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), 
                            cond);
-        std::cout << "------------------In mult prec_t: End Solving with SuperLu" << std::endl;
     #endif
 } // end mult
 

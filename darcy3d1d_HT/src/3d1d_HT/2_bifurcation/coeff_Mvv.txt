@@ -1,0 +1,3 @@
+ max coefficients in branch i = 0 is == 0.000113109
+ max coefficients in branch i = 1 is == 0.000113109
+ max coefficients in branch i = 2 is == 0.000113109

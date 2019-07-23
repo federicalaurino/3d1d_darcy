@@ -1,3 +1,14 @@
+/* -*- c++ -*- (enableMbars emacs c++ mode) */
+/*======================================================================
+3d1d - HT
+======================================================================*/
+/*! 
+  @file   darcy1D_precond.hpp
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
+  @brief  Class for darcy preconditioner for the 3D darcy problem: 
+ */
+
 /*  Class for darcy preconditioner for the 3D darcy problem:
     P = [diag^-1 0 ; 0 schur^-1]
     where diag is the diagonal of the velocity mass matrix and 
@@ -34,7 +45,7 @@ template <typename Matrix> struct darcy1D_precond{
         //build the preconditioner  blocks from the matrix A
         
         //diagonal block
-//        std::cout << "---------Extract the mass matrix" << std::endl;
+
         //Extract the mass matrix
         Matrix M;
         M.resize(dof_u, dof_u);

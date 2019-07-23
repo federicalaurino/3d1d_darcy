@@ -699,6 +699,7 @@ problemHT::solve_fixpoint_HT(void)
 	sparse_matrix_type Bvt(dof.Pv(), dof.Pt());
 	sparse_matrix_type Bvv(dof.Pv(), dof.Pv());
 	sparse_matrix_type Btv(dof.Pt(), dof.Pv());
+	sparse_matrix_type Mvv(dof.Uv(),dof.Uv());
 	vector_type Pt(dof.Pt()); 
 	vector_type Pv(dof.Pv()); 
 	scalar_type Pi_t=param.pi_t();
@@ -724,6 +725,7 @@ problemHT::solve_fixpoint_HT(void)
 	vector_type RES_H(max_iteration);
 	scalar_type epsH=descrHT.epsH;
 	scalar_type resH=epsH*100;
+
 // 2 - Saving the constant matrices
 	#ifdef M3D1D_VERBOSE_
 	cout << "Saving the constant matrices ... " << endl;
@@ -751,14 +753,14 @@ problemHT::solve_fixpoint_HT(void)
        	gmm::mult(Btv,DeltaPi,auxOSt);
         gmm::mult(Bvv,DeltaPi,auxOSv);
 
-	//Extracting Mvv_kv
+	/*//Extracting Mvv_kv
 	#ifdef M3D1D_VERBOSE_
 	cout << "  Assembling Mvv0 in FixPoint Hematocrit..." << endl;
 	#endif
 	// Local matrices
 	size_type shift = 0;
 	sparse_matrix_type Mvv_mu(dof.Uv(), dof.Uv());
-	for(size_type i=0; i<nb_branches; ++i){
+	/*for(size_type i=0; i<nb_branches; ++i){
 
 		if(i>0) shift += mf_Uvi[i-1].nb_dof();
 		scalar_type Ri = param.R(mimv, i);
@@ -783,7 +785,7 @@ problemHT::solve_fixpoint_HT(void)
 		gmm::clear(Dvvi);
 		gmm::clear(Mvvi);
 		
-	} /* end of branches loop */
+	} // end of branches loop 
 		sparse_matrix_type Mvv_bc(dof.Uv(),dof.Uv());
 		sparse_matrix_type Mvv(dof.Uv(),dof.Uv());
 		gmm::copy(gmm::sub_matrix(AM, 
@@ -792,7 +794,7 @@ problemHT::solve_fixpoint_HT(void)
 		gmm::scale(Mvv_mu,-1.0);
 		gmm::add(Mvv,Mvv_mu,Mvv_bc);
 		gmm::clear(Mvv_mu);
-		gmm::clear(Mvv);
+		gmm::clear(Mvv);*/
 
 	// Opening file to save number of iteration and residual
 	std::ofstream SaveResidual;
@@ -802,18 +804,15 @@ problemHT::solve_fixpoint_HT(void)
 
 	time_G=clock();
 
-	scalar_type H_start = PARAM.real_value("H_START", "hematocrit start");
-	gmm::resize(UM_HT,dofHT.H()); gmm::clear(UM_HT);
-	vector_type ones_H(dofHT.H(),1.00);
-	gmm::add(ones_H, UM_HT);
-	gmm::scale(UM_HT,H_start);	
 
-		assembly_HT();
+
 
 // 3 - Get the initial guess H0
 	#ifdef M3D1D_VERBOSE_
 	cout << "Solving the hematocrit system ... " << endl;
 	#endif
+	gmm::resize(UM_HT,dofHT.H()); gmm::clear(UM_HT);
+	assembly_HT();
 
 	gmm::csc_matrix<scalar_type> A_HT;
 	gmm::clean(AM_HT, 1E-12);
@@ -827,101 +826,89 @@ problemHT::solve_fixpoint_HT(void)
 	#endif
 
 	gmm::copy(UM_HT,H_old);
-//4- Iterative Process
-while(RK && iteration < max_iteration)
-	{	
+	//4- Iterative Process
+	while(RK && iteration < max_iteration)
+		{	
 
-// a-compute the viscosity in each vessel
-	#ifdef M3D1D_VERBOSE_
-	cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
-	#endif
-		shift = 0;
+	// a-compute the viscosity in each vessel
+		#ifdef M3D1D_VERBOSE_
+			cout << "Computing Viscosity - Iteration "<< iteration << "..." << endl;
+		#endif
+		size_type shift = 0;
 		size_type shift_h=0;
 		scalar_type shift_coef=0;
 		gmm::clear(MU); gmm::resize(MU, mf_coefv.nb_dof());
-	for(size_type i=0; i<nb_branches; ++i){
+		for(size_type i=0; i<nb_branches; ++i){
 
-		vector_type Hi(mf_Hi[i].nb_dof());
-		vector_type H_const(mf_coefvi[i].nb_dof());
-		scalar_type Ri = param.R(mimv, i);
-		vector_type mui; gmm::clear(mui);
-
-
-		if(i>0) shift_h += mf_Hi[i-1].nb_dof();
-		if(i>0) shift_coef += mf_coefvi[i-1].nb_dof();
-		if(i>0) shift += mf_Uvi[i-1].nb_dof();
+			vector_type Hi(mf_Hi[i].nb_dof());
+			vector_type H_const(mf_coefvi[i].nb_dof());
+			scalar_type Ri = param.R(mimv, i);
+			vector_type mui; gmm::clear(mui);
 
 
-		gmm::copy(gmm::sub_vector(H_old, 
-			gmm::sub_interval(shift_h, mf_Hi[i].nb_dof())), Hi);
-
-// cout << "-------- inizia interpolation" << endl;
-		getfem::interpolation(mf_Hi[i], mf_coefvi[i], Hi, H_const, 0);
+			if(i>0) shift_h += mf_Hi[i-1].nb_dof();
+			if(i>0) shift_coef += mf_coefvi[i-1].nb_dof();
+			if(i>0) shift += mf_Uvi[i-1].nb_dof();
 
 
-		switch(visco_v)
-				{
-				 case(0):{ //cout << "-------- case 0 " << endl;
-					for (auto h : H_const)
-						{
-							if(h==0)
-							{mui.emplace_back(mu_plasma);
-				// cout << "-------- case 0  ---- h==0 " << endl;
+			gmm::copy(gmm::sub_vector(H_old, 
+				gmm::sub_interval(shift_h, mf_Hi[i].nb_dof())), Hi);
+
+			getfem::interpolation(mf_Hi[i], mf_coefvi[i], Hi, H_const, 0);
+
+			switch(visco_v)
+					{
+					 case(0):{ //cout << "-------- case 0 " << endl;
+						for (auto h : H_const){
+								if(h==0) 
+									mui.emplace_back(mu_plasma);
+								else 
+									mui.emplace_back(viscosity_vivo(h, Ri*dim, mu_plasma));
 							}
-							else
-							{mui.emplace_back(viscosity_vivo(h, Ri*dim, mu_plasma));
-				// cout << "-------- case 0  ---- h!=0 " << endl;
-				// cout << "-------- mui  ---- h!=0 "<< mui << endl; 
-							}
-						}
-					}break;
-				 case(1):{ //cout << "-------- case 1 " << endl;
-
-					for (auto h : H_const)
-						{
-							if(h==0)
-							mui.emplace_back(mu_plasma);
-							else
-							mui.emplace_back(viscosity_vitro(h, Ri*dim, mu_plasma));
-						}
 						}break;
-				default:
-					cerr << "Invalid value for Visco_v " << visco_v << endl;
-				}
-// cout << "-------- end switch " << endl;
-			size_type pos=0;
-			for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
-			for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv()))
-				{
-				MU[muu] = mui[pos];
-				pos++;}
+					 
+					 case(1):{ //cout << "-------- case 1 " << endl;
+						for (auto h : H_const){
+								if(h==0)
+									mui.emplace_back(mu_plasma);
+								else
+									mui.emplace_back(viscosity_vitro(h, Ri*dim, mu_plasma));
+							}
+						}break;
 
-//b-modify the mass matrix for fluid dynamic problem
-	#ifdef M3D1D_VERBOSE_
-	cout << "Modify Mvvk - Iteration "<< iteration << "..." << endl;
-	#endif
-		scalar_type kvi = param.kv(mimv, i);
-		// Coefficient \pi^2*Ri'^4/\kappa_v
-		vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
-		for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
-			{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
-			}
-// 		cout<<"\n\n\n ci="<<ci[0]<<"    u="<<3.5/ci[0]*pi*Ri*Ri<<"\n\n\n";
-		// Allocate temp local matrices
-// cout << "-------- entra Mvv_mui "<< endl;
-		sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());
-		// Build Mvv_mui
-// cout << "-------- entra netw_pois "<< endl;		
-		asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
-		// Copy Mvv_mui in Mvv_mu
-		gmm::add(Mvv_mui, 
-			gmm::sub_matrix(Mvv_mu, 
-				gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
-				gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
-		gmm::clear(Mvv_mui);
-	} /* end of branches loop */
-	//Update Mvv and AM matrix
-		gmm::add(Mvv_mu,Mvv_bc,Mvv);
+					default:
+						cerr << "Invalid value for Visco_v " << visco_v << endl;
+					}
+
+				size_type pos=0;
+				for (getfem::mr_visitor mrv(mf_coefv.linked_mesh().region(i)); !mrv.finished(); ++mrv)
+					for (auto muu : mf_coefv.ind_basic_dof_of_element(mrv.cv())){
+						MU[muu] = mui[pos];
+						pos++;}
+
+	//b-modify the mass matrix for fluid dynamic problem
+			#ifdef M3D1D_VERBOSE_
+				cout << "Modify Mvvk - Iteration "<< iteration << "..." << endl;
+			#endif
+
+			scalar_type kvi = param.kv(mimv, i);
+			// Coefficient \pi^2*Ri'^4/\kappa_v
+			vector_type ci(mf_coefvi[i].nb_dof()); //gmm::clear(ci);
+			for(size_type j=0; j<mf_coefvi[i].nb_dof();j++)
+				{ci[j]=pi*pi*Ri*Ri*Ri*Ri/kvi*(1.0+param.Curv(i,j)*param.Curv(i,j)*Ri*Ri)/mu_start*mui[j];
+				}
+			//local mass matrix with mu updated
+			sparse_matrix_type Mvv_mui(mf_Uvi[i].nb_dof(), mf_Uvi[i].nb_dof());	
+			asm_network_poiseuilleHT(Mvv_mui, mimv, mf_Uvi[i], mf_coefvi[i], ci, meshv.region(i));
+			// Copy Mvv_mui in Mvv (global matrix)
+			gmm::add(Mvv_mui, 
+				gmm::sub_matrix(Mvv, 
+					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()), 
+					gmm::sub_interval(shift, mf_Uvi[i].nb_dof()))); 
+			gmm::clear(Mvv_mui);
+		} /* end of branches loop */
+
+		//Update AM matrix
 		gmm::clear(gmm::sub_matrix(AM, 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
@@ -930,43 +917,43 @@ while(RK && iteration < max_iteration)
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv()), 
 				gmm::sub_interval(dof.Ut()+dof.Pt(), dof.Uv())));
 		gmm::clear(Mvv);
-		gmm::clear(Mvv_mu);
 
-//c- add the lymphatic contribution
-	#ifdef M3D1D_VERBOSE_
-	cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;
-	#endif
-	gmm::copy(FM,F_new);
-	if(!LINEAR_LYMPH()){
-	//Adding lymphatic contribution
-	F_new=problem3d1d::modify_vector_LF(U_old,F_new);
-	}
+	//c- add the lymphatic contribution
+		#ifdef M3D1D_VERBOSE_
+		cout << "Adding Lymphatic Contribution - Iteration "<< iteration << "..." << endl;
+		#endif
+		gmm::copy(FM,F_new);
+		if(!LINEAR_LYMPH()){
+		//Adding lymphatic contribution
+		F_new=problem3d1d::modify_vector_LF(U_old,F_new);
+		}
 
-//d-1 find the new solution as AM *U(k+1) = F(k)
-//d-2 under-relaxation process U(k+1)= alfa*U(k+1) + (1-alfa)U(k)
-	#ifdef M3D1D_VERBOSE_
-	cout << "Solving the fluid dynamic problem - Iteration "<< iteration << "..." << endl;
-	#endif
+	//d-1 find the new solution as AM *U(k+1) = F(k)
+	//d-2 under-relaxation process U(k+1)= alfa*U(k+1) + (1-alfa)U(k)
+		#ifdef M3D1D_VERBOSE_
+			cout << "Solving the fluid dynamic problem - Iteration "<< iteration << "..." << endl;
+		#endif
 
-	t=clock();
+		t=clock();
 
-	U_new=problem3d1d::iteration_solve(U_old,F_new);
-	gmm::copy(U_new,UM);
-	t=clock()-t;
-//e-1 find the new solution for hematocrit as AM_HT *H(k+1) = F(k)
-//e-2 under-relaxation process H(k+1)= alfa*H(k+1) + (1-alfa)H(k)
-	#ifdef M3D1D_VERBOSE_
-	cout << "Solving the hematocrit problem - Iteration "<< iteration << "..." << endl;
-	#endif
+		U_new=problem3d1d::iteration_solve(U_old,F_new);
+		gmm::copy(U_new,UM);
+		t=clock()-t;
+
+	//e-1 find the new solution for hematocrit as AM_HT *H(k+1) = F(k)
+	//e-2 under-relaxation process H(k+1)= alfa*H(k+1) + (1-alfa)H(k)
+		#ifdef M3D1D_VERBOSE_
+			cout << "Solving the hematocrit problem - Iteration "<< iteration << "..." << endl;
+		#endif
 		assembly_HT();
 		H_new=iteration_solve_HT(H_old, FM_HT);
 
-//f-compute TFR
-//g-compute lymphatic total flow rate
-//h-compute total FR going in or out the interstitial domain
-	#ifdef M3D1D_VERBOSE_
-	cout << "Computing Flow Rate - Iteration "<< iteration << "..." << endl;
-	#endif
+	//f-compute TFR
+	//g-compute lymphatic total flow rate
+	//h-compute total FR going in or out the interstitial domain
+		#ifdef M3D1D_VERBOSE_
+			cout << "Computing Flow Rate - Iteration "<< iteration << "..." << endl;
+		#endif
 		// Extracting solutions Pt, Pv 
 		gmm::copy(gmm::sub_vector(U_new, 
 			gmm::sub_interval(dof.Ut(), dof.Pt())), Pt);
@@ -974,106 +961,106 @@ while(RK && iteration < max_iteration)
 			gmm::sub_interval(dof.Ut()+dof.Pt()+dof.Uv(), dof.Pv())), Pv);
 		// Lymphatic Contribution
 		if(!LINEAR_LYMPH())
-		F_LF=problem3d1d::compute_lymphatics(U_new);
+			F_LF=problem3d1d::compute_lymphatics(U_new);
 		else
 		{       
-		vector_type Pl(dof.Pt(),PARAM.real_value("PL"));
-		vector_type Pl_aux(dof.Pt());
-		sparse_matrix_type Mlf (dof.Pt(), dof.Pt());
-		scalar_type lf_coef=param.Q_LF(0);//scalar then uniform untill now
-		asm_tissue_lymph_sink(Mlf, mimt, mf_Pt);
-		gmm::scale(Mlf,lf_coef);
-		gmm::mult(Mlf,Pl,Pl_aux);
-		gmm::scale(Pl_aux,-1);
-		gmm::mult(Mlf,Pt,F_LF);
-		gmm::add(F_LF,Pl_aux,F_LF);
+			vector_type Pl(dof.Pt(),PARAM.real_value("PL"));
+			vector_type Pl_aux(dof.Pt());
+			sparse_matrix_type Mlf (dof.Pt(), dof.Pt());
+			scalar_type lf_coef=param.Q_LF(0);//scalar then uniform untill now
+			asm_tissue_lymph_sink(Mlf, mimt, mf_Pt);
+			gmm::scale(Mlf,lf_coef);
+			gmm::mult(Mlf,Pl,Pl_aux);
+			gmm::scale(Pl_aux,-1);
+			gmm::mult(Mlf,Pt,F_LF);
+			gmm::add(F_LF,Pl_aux,F_LF);
 		}
 		// Computing Bvv*Pv - Bvt*Pt
 		gmm::mult(Bvt, Pt, Uphi);
 		gmm::mult_add(Bvv, Pv, Uphi);
-        	//oncotic term
+	    	//oncotic term
 		picoef=sigma*(Pi_v-Pi_t);
 		gmm::copy(Ones, DeltaPi);
 		gmm::scale(DeltaPi,-1.0);
-        	gmm::scale(DeltaPi,picoef);
+	    	gmm::scale(DeltaPi,picoef);
 		gmm::mult_add(Bvv, DeltaPi, Uphi);
 		//Computing TFR
 		TFR = std::accumulate(Uphi.begin(), Uphi.end(), 0.0);
-        	//computing flowrate of lymphatic system
+	    //computing flowrate of lymphatic system
 		FRlymph = std::accumulate(F_LF.begin(), F_LF.end(), 0.0);
-        	//computing flowrate from the cube
-        	FRCube = TFR - FRlymph;
+	    //computing flowrate from the cube
+	    FRCube = TFR - FRlymph;
 
-		if(RK && iteration < max_iteration && print_res && (iteration % iteration_save) == 0)
-				{
-				problem3d1d::export_vtk();
-				export_vtk();
-				cout << "Solution at iteration " << iteration+1 << " saved" << endl;
-				cout << "TFR                 = " << TFR << endl;
-				cout << "Lymphatic Flow Rate = " << FRlymph << endl;
-				cout << "Flow Rate of cube   = " << FRCube << endl;
-				}
-//i- check residuals Rk
-	#ifdef M3D1D_VERBOSE_
-	cout << "Checking Residuals - Iteration "<< iteration << "..." << endl;
-	#endif
+		//if(RK && iteration < max_iteration && print_res && (iteration % iteration_save) == 0){
+		if(print_res && (iteration % iteration_save) == 0){
+			problem3d1d::export_vtk();
+			//export_vtk();
+			cout << "Solution at iteration " << iteration+1 << " saved" << endl;
+			cout << "TFR                 = " << TFR << endl;
+			cout << "Lymphatic Flow Rate = " << FRlymph << endl;
+			cout << "Flow Rate of cube   = " << FRCube << endl;
+			}
+	//i- check residuals Rk
+		#ifdef M3D1D_VERBOSE_
+			cout << "Checking Residuals - Iteration "<< iteration << "..." << endl;
+		#endif
 
-	//Solution residual
-			resSol=problem3d1d::calcolo_Rk(U_new, U_old);
-	//Hematocrit residual
-			resH=calcolo_Rk_HT(H_new,H_old);
-	//Conservation of mass residual
-			gmm::mult(gmm::sub_matrix(AM, 
+		//Solution residual
+		resSol=problem3d1d::calcolo_Rk(U_new, U_old);
+		//Hematocrit residual
+		resH=calcolo_Rk_HT(H_new,H_old);
+		//Conservation of mass residual
+		gmm::mult(gmm::sub_matrix(AM, 
 						gmm::sub_interval(dof.Ut(), dof.Pt()),
 						gmm::sub_interval(0, dof.tot())),
-						U_new,
-							auxCM);
-			gmm::add(auxOSt,auxCM);
+							U_new,
+								auxCM);
+		gmm::add(auxOSt,auxCM);
 
-			if(!LINEAR_LYMPH())
+		if(!LINEAR_LYMPH())
 			gmm::add(F_LF,auxCM);
 
-			scalar_type resCM=0;	
-			if(TFR!=0)	
+		scalar_type resCM=0;	
+		if(TFR!=0)	
 			resCM=std::accumulate(auxCM.begin(), auxCM.end(), 0.0)/TFR;
 
-	RK=resSol>epsSol || fabs(resCM) > epsCM || resH > epsH; // all the residual must reach convergence to exit the "while"
+		RK=resSol>epsSol || fabs(resCM) > epsCM || resH > epsH; // all the residual must reach convergence to exit the "while"
 
-	iteration++;
+		iteration++;
 
-	//Saving residual values in an output file
-	SaveResidual << iteration << "\t" << resSol << "\t" << resCM << "\t" << resH << endl;
+		//Saving residual values in an output file
+		SaveResidual << iteration << "\t" << resSol << "\t" << resCM << "\t" << resH << endl;
 
-			if(print_res)  {
+		if(print_res)  {
 			cout << "\nStep n°:" << iteration << "\nSolution Residual = " << resSol << "\nMass Residual = " << fabs(resCM) << "\nHematocrit Residual "<< resH << endl;
 			cout << "\t\t\t\tTime: " <<  ((float)t)/CLOCKS_PER_SEC << " s "<< endl;
 					}
-			cout << "********************************************************" << endl;
+		cout << "********************************************************" << endl;
 
-//l- Update the value of U(k-1) with U(k)
-//m- Update the value of H(k-1) with H(k)
-	#ifdef M3D1D_VERBOSE_
-	cout << "Updating Solution - Iteration "<< iteration << "..." << endl;
-	#endif
+	//l- Update the value of U(k-1) with U(k)
+	//m- Update the value of H(k-1) with H(k)
+		#ifdef M3D1D_VERBOSE_
+		cout << "Updating Solution - Iteration "<< iteration << "..." << endl;
+		#endif
 
-	gmm::copy(U_new,U_old);
-	gmm::copy(H_new,H_old);
-	gmm::copy(H_old,UM_HT);
+		gmm::copy(U_new,U_old);
+		gmm::copy(H_new,H_old);
+		gmm::copy(H_old,UM_HT);
 
-	//plotting residuals
-	RES_SOL[iteration-1]=fabs(resSol);
-	RES_CM[iteration-1]=fabs(resCM);
-	RES_H[iteration-1]=fabs(resH);
-	/*gp << "set logscale y; set xlabel 'iteration';set ylabel 'residual'; plot '-' w lines title 'Solution Residual', '-' w lines title 'Mass Conservation Residual','-' w lines title 'Hematocrit Residual'\n";
+		//plotting residuals
+		RES_SOL[iteration-1]=fabs(resSol);
+		RES_CM[iteration-1]=fabs(resCM);
+		RES_H[iteration-1]=fabs(resH);
+		/*gp << "set logscale y; set xlabel 'iteration';set ylabel 'residual'; plot '-' w lines title 'Solution Residual', '-' w lines title 'Mass Conservation Residual','-' w lines title 'Hematocrit Residual'\n";
 
-	gp.send1d(RES_SOL);
-	gp.send1d(RES_CM);
-	gp.send1d(RES_H);
-	gp.flush();*/
+		gp.send1d(RES_SOL);
+		gp.send1d(RES_CM);
+		gp.send1d(RES_H);
+		gp.flush();*/
 
-	//De-allocate memory
-	gmm::clear(F_LF);
-	gmm::clear(U_new); gmm::clear(auxCM); gmm::clear(F_new); gmm::clear(H_new);
+		//De-allocate memory
+		gmm::clear(F_LF);
+		gmm::clear(U_new); gmm::clear(auxCM); gmm::clear(F_new); gmm::clear(H_new);
 	} //Exit the while
 	
 	gmm::copy(U_old,UM);

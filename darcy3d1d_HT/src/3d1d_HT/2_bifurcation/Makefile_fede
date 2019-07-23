@@ -11,38 +11,42 @@
 #   AUTHOR      : Domenico Notaro <domenico.not@gmail.com>
 #   DATE        : April 2015
 # ====================================================================
+include ../../../config.mk
 
-CPPFLAGS=-I. -I$(mkGetfemInc) -I$(mkBoostInc)
-CXXFLAGS=-std=c++11 -D=M3D1D_VERBOSE_
+CPPFLAGS=-I../../../darcy3d1d_HT/include -I$(mkGetfemInc) -I$(mkBoostInc) 
+CXXFLAGS+=-std=c++11 
+# -D=M3D1D_VERBOSE_
+
 ifeq ($(DEBUG),yes)
   OPTFLAGS=-g -Wall
 else
   OPTFLAGS=-O3 -march=native
   CPPFLAGS+=-DNDEBUG
 endif
-LIBDIR=../lib
-LIBNAME=problem3d1d
-LIBFILE=lib$(LIBNAME).a
+LDFLAGS+=-L../../../darcy3d1d_HT/lib -L$(mkGetfemLib) -L$(mkBoostLib) -Wl,-rpath=../../../darcy3d1d_HT/lib
+LIBRARIES+=-lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem
 
-LIBSRC=$(wildcard *.cpp)
-LIBOBJS=$(LIBSRC:.cpp=.o)
-LIBHEADERS=$(wildcard *.hpp)
 
-.PHONY: all clean distclean library
+SRCS=$(wildcard *.cpp)
+OBJS=$(SRCS:.cpp=.o)
+EXEC=M3D1D
 
-all: library
+OUTDIR=vtk
+
+.PHONY: all clean distclean
+
+all: $(EXEC)
 	@echo
-	@echo Library installed!
-
-library: $(LIBOBJS)
-	install -d $(LIBDIR)
-	ar -r $(LIBDIR)/$(LIBFILE) $(LIBOBJS)
+	@echo Compilation completed!
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -o $@ -c $<
 
+$(EXEC): $(OBJS)
+	$(CXX) $(LDFLAGS) -o $@ $(OBJS) $(LIBRARIES)
+
 clean:
-	$(RM) $(LIBOBJS) *~
+	$(RM) $(OBJS) $(EXEC) *~ *.log
 
 distclean: clean
-	$(RM) $(LIBDIR)/$(LIBFILE)
+	$(RM) *.txt $(OUTDIR)/*
