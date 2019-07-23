@@ -1182,7 +1182,7 @@ bool problem3d1d::solve(sparse_matrix_type &M, vector_type &U, vector_type &F)
                     // In alternative we can use gmres + P_v to solve also the vessel problem
                     gmm::clear(sol_v);
                     iter.set_iteration(0);
-                    if (PARAM.int_value("PRECONDITIONED")){
+                    if (PARAM.int_value("PRECONDITIONED"))
                     	gmm::gmres(Mv, sol_v, rhs_fixp_v, P_v, restart, iter);
                     else 
                     	gmm::gmres(Mv, sol_v, rhs_fixp_v, PM, restart, iter);
@@ -1821,42 +1821,11 @@ problem3d1d::export_vtk(const string & suff)
         max_p = std::max(max_p, Pv[i]);
         min_p = std::min(min_p, Pv[i]);
     }
-    cout << "===========================" << endl;
-    cout << "Pv = [ " << min_p << ", " << max_p << " ]" <<endl;
-    cout << "===========================" << endl;
 
 	#ifdef M3D1D_VERBOSE_
 	cout << "... export done, visualize the data file with (for example) Paraview " << endl; 
 	#endif
     
-    
-    #ifdef M3D1D_VERBOSE_
-	cout << "  -----------------Federica:Trying to export a function defined on Pv mesh  ..." << endl;
-	#endif
-    //returns the x coordinate of a point of the mesh
-    vector_type XX(mf_Pv.nb_dof());
-	interpolation_function(mf_Pv, XX, x_coordinate);
-    vtk_export exp_XX(descr.OUTPUT+"XX"+suff+".vtk");
-	exp_XX.exporting(mf_Pv);
-	exp_XX.write_mesh();
-	exp_XX.write_point_data(mf_Pv, XX, "XX");
-    
-    //returns the bcs
-    vector_type YY(mf_Pv.nb_dof());
-    vector_type tmp(mf_Pv.nb_dof());
-    std::vector<scalar_type> ones(mf_Pv.nb_dof(), 1.0);
-    for(size_type kk=0; kk<BCv.size(); kk++){
-        gmm::clear(tmp);
-        cout <<"BC = " << BCv[kk].value << endl;
-        getfem::asm_source_term(tmp, 
-				mimv, mf_Pv, mf_Pv, gmm::scaled(ones, BCv[kk].value), BCv[kk].rg);
-        gmm::add(tmp,YY);
-    }
-
-    vtk_export exp_YY(descr.OUTPUT+"YY"+suff+".vtk");
-	exp_YY.exporting(mf_Pv);
-	exp_YY.write_mesh();
-	exp_YY.write_point_data(mf_Pv, YY, "YY");
     
   }
 

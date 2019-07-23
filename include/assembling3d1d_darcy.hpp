@@ -15,8 +15,9 @@
  */
 #ifndef M3D1D_ASSEMBLING_3D1D_HPP_
 #define M3D1D_ASSEMBLING_3D1D_HPP_
+
+
 #include <defines.hpp>
-//#include <utilities_darcy.hpp>
 
 namespace getfem {
 
