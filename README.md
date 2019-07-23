@@ -24,14 +24,42 @@
     '3d1d_geomat' : contains the code which solves 3D-1D Darcy in the pressure variable solely using the SAMG solver as described in https://doi.org/10.1007/s13137-019-0115-9 (with D.Cerroni)
     'darcy3D_mixed' : contains the code for solving a simple 3D mixed Darcy with preconditioned GMRES 
     'darcy3d1d_HT': contains the code which solves velocity and pressure problem in a vascular network taking into account the effects of the presence of the RBCs (Possenti, Di Gregorio, Gerosa, Cerroni, Brambilla)
+    
+    In each folder, 
+    
+- `include/` : General include files
+
+- `lib/`     : Main library (to be generated)
+
+- `src/`     : Example sources
+
+- `config.mk`: Specify the variable GETFEM_PREFIX for GetFEM++ library
+
+- `Makefile` : Instruction to install the project (see INSTALLATION)
+
+- `utilities`: other files for problem set up
 
 **INSTALLATION**
 
 Prerequisites
 
-* You need the open source finite element library "GetFEM++" See http://download.gna.org/getfem/html/homepage Version >= 5.1 is necessary
+* You need the open source finite element library "GetFEM++" See http://download.gna.org/getfem/html/homepage Version >= 5.1 is necessary. You have to modify the path to the GetFEM library in `config.mk`:
 
-* SAMG LICENCE is not required but recommended for more efficient simulations.
+GETFEM_PREFIX=/home/.../path/to/.../getfem
+
+Alternatively, at MOX cluster use the `module.sh` file:
+```
+$ source configure.sh
+```
+
+* SAMG LICENCE is not required but recommended for more efficient simulations. To abilitate the usage of SAMG library in the code modify in `configure..sh` the flag
+
+WITH_SAMG = 1
+
+and use 
+```
+$ source configure.sh
+```
 
 * Gnuplot: Gnuplot is NOT required, but it can be used to visualize residuals. To use it, uncomment lines within the code and see the GNUPLOT_Istruzioni_installazione to install. https://sourceforge.net/projects/gnuplot/files/gnuplot/
 
@@ -67,3 +95,8 @@ GetFEM lib : 5.2
 Compiler : g++-5.2.1
 
 GetFEM lib : 5.2
+
+
+
+
+
