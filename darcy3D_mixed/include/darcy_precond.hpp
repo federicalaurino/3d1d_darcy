@@ -7,16 +7,18 @@
 
 #include <gmm/gmm.h>
 #include <gmm/gmm_precond.h>
-//#include <getfem/getfem_mesh.h>
 #include <getfem/getfem_generic_assembly.h>
 #include <defines.hpp>
+#if WITH_SAMG == 1
+    #include <AMG_Interface.hpp>
+#endif   
 
-    
+  
 template <typename Matrix> struct darcy_precond{
   
     gmm::diagonal_precond <Matrix> D;
     Matrix schur; 
-    
+
     getfem::size_type dof_u;
     getfem::size_type dof_p;
     
@@ -65,7 +67,9 @@ template <typename Matrix> struct darcy_precond{
         //#endif
         wp.assembly(2);
 
-        gmm::copy(wp.assembled_matrix(), schur);           
+        gmm::copy(wp.assembled_matrix(), schur);
+        gmm::csr_matrix <scalar_type> schur_csr;
+        gmm::copy(schur, schur_csr);  
         
     } // end of build with
     
@@ -73,17 +77,20 @@ template <typename Matrix> struct darcy_precond{
     // default constructor
     darcy_precond(void) {} 
     //constructor
-    darcy_precond(const Matrix &A, const getfem::mesh_fem & mf_u, const getfem::mesh_fem & mf_p, const getfem::mesh_im & mim) {
+    darcy_precond(const Matrix &A, 
+                  const getfem::mesh_fem & mf_u, 
+                  const getfem::mesh_fem & mf_p, 
+                  const getfem::mesh_im & mim) {
         dof_u = mf_u.nb_dof();
         dof_p = mf_p.nb_dof();
         build_with(A, mf_u, mf_p, mim); 
     } 
     
-    }; // end of struct
+}; // end of struct
     
     
 // Multiplication of the prec by a vector: P*vec -> res.
-// In our case we build P but what we have to do is P^-1*vec, therefore we solve the linear system P res =  vec 
+// In our case we build P but what we have to do is P^-1*vec -> we solve the linear system P res =  vec 
 
 template < typename Matrix, typename V1, typename V2>
 void mult(const darcy_precond<Matrix> &P, const V1 &vec, V2 &res) {
@@ -94,11 +101,28 @@ void mult(const darcy_precond<Matrix> &P, const V1 &vec, V2 &res) {
               gmm::sub_vector(res, gmm::sub_interval(0, P.dof_u)));
     
     // multiplication of the Schur term
-    double cond;
-    gmm::SuperLU_solve(P.schur, 
+    #ifdef WITH_AMG
+        // AMG solver
+        gmm::csr_matrix <scalar_type> schur_csr;
+        gmm::copy(P.schur, schur_csr);
+        std::vector <double> rhs; gmm::resize(rhs, P.dof_p);
+        gmm::copy(gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), rhs);
+        std::cout << "------------------Solving with SAMG" << std::endl;
+        AMG sys(schur_csr, rhs,1);
+        sys.csr2samg();
+        sys.solve();
+        //solution
+        for(int i=0; i< P.dof_p; i++)
+            res[P.dof_u + i] = sys.getsol()[i];
+    #else 
+        double cond;
+        // Direct solver
+        gmm::SuperLU_solve(P.schur, 
                        gmm::sub_vector(res, gmm::sub_interval(P.dof_u, P.dof_p)), 
                        gmm::sub_vector(vec, gmm::sub_interval(P.dof_u, P.dof_p)), 
                        cond);
+    #endif
+        
 } // end mult
 
 //Redefinition of some gmm functions for darcy_precond

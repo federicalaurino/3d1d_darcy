@@ -1,0 +1,56 @@
+========================================
+1 simulation gmresNOprec
+========================================
+make -C ../../darcy3D_mixed/include
+make[1]: Entering directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+install -d ../lib
+ar -r ../lib/libproblem3d1d.a AMG_Interface.o darcy3dmixed.o utilities_darcy.o 
+
+Library installed!
+make[1]: Leaving directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+g++ -I../../darcy3D_mixed/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/include  -DNDEBUG -I/opt/lib/samg/ -DWITH_SAMG -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/include -DGMM_USES_BLAS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -std=c++14 -std=c++11  -I /opt/lib/samg/ -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -O3 -march=native -o main.o -c main.cpp
+g++ -L/opt/lib/samg/ -Wl,-rpath=/opt/lib/samg/ -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -lgetfem -lqhull -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/openblas/0.2.17/lib -lopenblas   -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/lib -L../../darcy3D_mixed/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/lib -Wl,-rpath=../../darcy3D_mixed/lib -L/opt/lib/samg/ -o M3D1D main.o -lamg -liomp5 -lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem -lamg -liomp5
+
+Compilation completed!
+========================================
+2 simulation gmresNOprec
+========================================
+make -C ../../darcy3D_mixed/include
+make[1]: Entering directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+install -d ../lib
+ar -r ../lib/libproblem3d1d.a AMG_Interface.o darcy3dmixed.o utilities_darcy.o 
+
+Library installed!
+make[1]: Leaving directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+g++ -I../../darcy3D_mixed/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/include  -DNDEBUG -I/opt/lib/samg/ -DWITH_SAMG -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/include -DGMM_USES_BLAS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -std=c++14 -std=c++11  -I /opt/lib/samg/ -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -O3 -march=native -o main.o -c main.cpp
+g++ -L/opt/lib/samg/ -Wl,-rpath=/opt/lib/samg/ -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -lgetfem -lqhull -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/openblas/0.2.17/lib -lopenblas   -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/lib -L../../darcy3D_mixed/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/lib -Wl,-rpath=../../darcy3D_mixed/lib -L/opt/lib/samg/ -o M3D1D main.o -lamg -liomp5 -lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem -lamg -liomp5
+
+Compilation completed!
+========================================
+3 simulation gmresNOprec
+========================================
+make -C ../../darcy3D_mixed/include
+make[1]: Entering directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+install -d ../lib
+ar -r ../lib/libproblem3d1d.a AMG_Interface.o darcy3dmixed.o utilities_darcy.o 
+
+Library installed!
+make[1]: Leaving directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+g++ -I../../darcy3D_mixed/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/include  -DNDEBUG -I/opt/lib/samg/ -DWITH_SAMG -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/include -DGMM_USES_BLAS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -std=c++14 -std=c++11  -I /opt/lib/samg/ -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -O3 -march=native -o main.o -c main.cpp
+g++ -L/opt/lib/samg/ -Wl,-rpath=/opt/lib/samg/ -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -lgetfem -lqhull -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/openblas/0.2.17/lib -lopenblas   -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/lib -L../../darcy3D_mixed/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/lib -Wl,-rpath=../../darcy3D_mixed/lib -L/opt/lib/samg/ -o M3D1D main.o -lamg -liomp5 -lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem -lamg -liomp5
+
+Compilation completed!
+========================================
+4 simulation gmresNOprec
+========================================
+make -C ../../darcy3D_mixed/include
+make[1]: Entering directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+install -d ../lib
+ar -r ../lib/libproblem3d1d.a AMG_Interface.o darcy3dmixed.o utilities_darcy.o 
+
+Library installed!
+make[1]: Leaving directory '/u/archive/dott/laurino/3d1d_darcy/darcy3D_mixed/include'
+g++ -I../../darcy3D_mixed/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/include  -DNDEBUG -I/opt/lib/samg/ -DWITH_SAMG -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/include -DGMM_USES_BLAS -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -I/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/include -std=c++14 -std=c++11  -I /opt/lib/samg/ -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS -O3 -march=native -o main.o -c main.cpp
+g++ -L/opt/lib/samg/ -Wl,-rpath=/opt/lib/samg/ -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -lgetfem -lqhull -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/openblas/0.2.17/lib -lopenblas   -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/qhull/2015.2/lib -L../../darcy3D_mixed/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/getfem/5.1/lib -L/u/sw/pkgs/toolchains/gcc-glibc/5/pkgs/boost/1.60.0/lib -Wl,-rpath=../../darcy3D_mixed/lib -L/opt/lib/samg/ -o M3D1D main.o -lamg -liomp5 -lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem -lamg -liomp5
+
+Compilation completed!

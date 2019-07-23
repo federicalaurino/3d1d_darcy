@@ -1,16 +1,11 @@
 /* -*- c++ -*- (enableMbars emacs c++ mode) */
 /*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2016-2017
-                  
-                Copyright (C) 2016 Stefano Brambilla
+3d mixed Darcy 
 ======================================================================*/
 /*! 
-  @file   param3d1d_transp.cpp
-  @author Stefano Brambilla <s.brambilla93@gmail.com>
-  @date   September 2016.
+  @file   darcy3d1d.hpp
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
   @brief  Definition of the aux class for physical parameters.
  */
  

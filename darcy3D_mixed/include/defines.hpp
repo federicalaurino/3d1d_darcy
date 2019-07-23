@@ -1,16 +1,11 @@
 /* -*- c++ -*- (enables emacs c++ mode) */
 /*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2014-2015
-                  
-                Copyright (C) 2015 Domenico Notaro
+3d mixed Darcy 
 ======================================================================*/
 /*! 
   @file   defines.hpp
-  @author Domenico Notaro <domenico.not@gmail.com>
-  @date   January 2016.
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   2019.
   @brief  Miscellaneous definitions for the 3D/1D coupling.
  */
 #ifndef M3D1D_DEFINES_HPP_
