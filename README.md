@@ -1,33 +1,34 @@
 # A Getfem interface for SAMG library with applications
-Politecnico di Milano (ITALY)
+**Politecnico di Milano (ITALY)**
 
-#### Author : Federica Laurino
+**Author** : Federica Laurino
 
-Mailto : federica.laurino@polimi.it
+**Mailto** : federica.laurino@polimi.it
 
-Date : July 2019
-Previous projects
+**Date** : July 2019
 
-Authors : Stefano Brambulla, Luca Possenti, Simone Di Gregorio, Giorgio Raimondi, Fannie Gerosa, Daniele Cerroni
+### Previous projects
 
-Mailto : s.brambilla93@gmail.com
+**Authors** : Stefano Brambulla, Luca Possenti, Simone Di Gregorio, Giorgio Raimondi, Fannie Gerosa, Daniele Cerroni
 
-Date : January 2018
+**Mailto** : s.brambilla93@gmail.com
 
-Github Page : https://github.com/stefano-brambilla-853558
+**Date** : January 2018
 
-How to install and run the program
-THE PACKAGE
+**Github Page** : https://github.com/stefano-brambilla-853558
+
+### How to install and run the program
+**THE PACKAGE**
 
     'fluid_ht_curvature' : The folder containing the code which solves velocity and pressure problem (Notaro, Possenti, Di Gregorio code)
     'transport': The folder containing the code which solves transport problem (Brambilla code)
 
 The details of the two libraries are in their respective README.md
+**INSTALLATION**
 
-##INSTALLATION:
 Prerequisites
 
-You need the open source finite element library "GetFEM++" See http://download.gna.org/getfem/html/homepage Version >= 5.1 is necessary
+You need the open source finite element library "GetFEM++" See [http://download.gna.org/getfem/html/homepage] Version >= 5.1 is necessary
 
 SAMG LICENCE is not required but recommended for more efficient simulations.
 
