@@ -14,9 +14,11 @@
 include ../../../../config.mk
 
 CPPFLAGS=-I../../../include -I$(mkGetfemInc) -I$(mkBoostInc) 
-CXXFLAGS+=-std=c++11 
-CXXFLAGS += -I ${SAMG}/
-CXXFLAGS+= -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS
+CXXFLAGS+=-std=c++14 
+ifeq ($(WITH_SAMG),1)
+  CXXFLAGS += -I ${SAMG}/
+  CXXFLAGS+= -DSAMG_UNIX_LINUX -DSAMG_LCASE_USCORE -DPYRAMID_TRIANGULAR_FACETS
+endif
 # -D=M3D1D_VERBOSE_
 
 ifeq ($(DEBUG),yes)
@@ -27,9 +29,10 @@ else
 endif
 LDFLAGS+=-L../../../lib -L$(mkGetfemLib) -L$(mkBoostLib) -Wl,-rpath=../../../lib 
 LIBRARIES+=-lproblem3d1d -lgetfem -lutil -lboost_iostreams -lboost_system -lboost_filesystem
-LDFLAGS += -L/opt/lib/samg/
-LIBRARIES += -lamg -liomp5
-
+ifeq ($(WITH_SAMG),1)
+  LDFLAGS += -L/opt/lib/samg/
+  LIBRARIES += -lamg -liomp5
+endif
 LINKLIBS := ../../../lib/libproblem3d1d.a
 
 SRCS=$(wildcard *.cpp)

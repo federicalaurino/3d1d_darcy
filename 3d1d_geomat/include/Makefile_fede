@@ -1,3 +1,5 @@
+# Makefile personal laptop
+
 include ../../config.mk
 
 CPPFLAGS=-I. -I$(GETFEM_PREFIX)/include

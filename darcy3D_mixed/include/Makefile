@@ -1,58 +1,33 @@
-# ====================================================================
-#   "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-#      Course on Advanced Programming for Scientific Computing
-#                     Politecnico di Milano
-#                         A.Y. 2014-2015
-#
-#                    Copyright D. Notaro 2015
-# ====================================================================
-#   FILE        : Makefile
-#   DESCRIPTION : makefile for test simulations
-#   AUTHOR      : Domenico Notaro <domenico.not@gmail.com>
-#   DATE        : April 2015
-# ==================================================================== 
 include ../../config.mk
 
-CPPFLAGS+=-I. -I$(mkGetfemInc) -I$(mkBoostInc)
-CXXFLAGS+=-std=c++14 -fPIC
-
-
-ifeq ($(DEBUG),yes)
-  OPTFLAGS=-g -Wall
-else
-  OPTFLAGS=-O3 -march=native
-  CPPFLAGS+=-DNDEBUG
-endif
-
-ifeq ($(VERBOSE),yes)
-  CPPFLAGS+=-DM3D1D_VERBOSE_
-endif
+CPPFLAGS=-I. -I$(GETFEM_PREFIX)/include
+CXXFLAGS+=-std=c++14
+OPTFLAGS=-O3 -DNDEBUG -march=native
 
 LIBDIR=../lib
 LIBNAME=problem3d1d
-LIBFILE=lib$(LIBNAME).so
+LIBFILE=lib$(LIBNAME).a
 
 LIBSRC=$(wildcard *.cpp)
 LIBOBJS=$(LIBSRC:.cpp=.o)
 LIBHEADERS=$(wildcard *.hpp)
 
-.PHONY: all clean distclean library fastclean
+.PHONY: all clean distclean library
 
 all: library
 	@echo
 	@echo Library installed!
 
 library: $(LIBOBJS)
-	$(CXX) -shared -o $(LIBDIR)/$(LIBFILE) $(LIBOBJS)
+	install -d $(LIBDIR)
+	ar -r $(LIBDIR)/$(LIBFILE) $(LIBOBJS) 
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -o $@ -c $<
- 
+
 clean:
 	$(RM) $(LIBOBJS) *~
 
 distclean: clean
 	$(RM) $(LIBDIR)/$(LIBFILE)
 
-fastclean:
-	$(RM) problemHT.o

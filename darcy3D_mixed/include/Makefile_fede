@@ -47,7 +47,7 @@ library: $(LIBOBJS)
 
 %.o: %.cpp
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(OPTFLAGS) -o $@ -c $<
-
+ 
 clean:
 	$(RM) $(LIBOBJS) *~
 
