@@ -1,12 +1,3 @@
-/* -*- c++ -*- (enables emacs c++ mode) */
-/*======================================================================
-    "Mixed Finite Element Methods for Coupled 3D/1D Fluid Problems"
-        Course on Advanced Programming for Scientific Computing
-                      Politecnico di Milano
-                          A.Y. 2014-2015
-                  
-                Copyright (C) 2015 Domenico Notaro
-======================================================================*/
 /*! 
   @file   main.cpp
   @author Federica Laurino <federica.laurino@polimi.it>
