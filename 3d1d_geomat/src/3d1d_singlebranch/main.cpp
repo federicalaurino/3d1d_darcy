@@ -9,21 +9,11 @@
 ======================================================================*/
 /*! 
   @file   main.cpp
-  @author Domenico Notaro <domenico.not@gmail.com>
-  @date   April 2015.
+  @author Federica Laurino <federica.laurino@polimi.it>
+  @date   June 2019.
   @brief  Main program for test simulations.
-  @details
-    We solve the coupled 3D/1D problem of fluid exchange between a 1D 
-    network \Lambda and the 3D interstitial tissue \Omega
-    
-    *****************************************
-      Benchmark : single-vessel network 
-      Mixed finite elements approximation
-      Monolithic resolution by SuperLU 3.0
-    *****************************************
-    
-	See Section "Code verification: test-cases"
  */
+
 #include <iostream>
 #include <getfem/bgeot_config.h> // for FE_ENABLE_EXCEPT
 #include <darcy3d1d.hpp>
